@@ -1,6 +1,8 @@
 # CLAUDE.md
 
 ## Purpose
+**Start here: `docs/NEXT-STEPS.md`** (live queue). Phase 2 plan: `docs/plan-phase2-extraction.md`. Rights: `docs/rights.md`.
+
 Archive, then build a searchable database of, statistics released under the Commonwealth FOI Act. See README.md.
 
 ## Layout
@@ -19,6 +21,9 @@ Archive, then build a searchable database of, statistics released under the Comm
 Raw data, PDFs and manifests stay under `data/` (gitignored). CSV only, no RDS, no arrow (segfaults under Git Bash R).
 
 ## Phases
-1. Archive raw documents and manifests (current).
-2. Extract tables from the PDFs.
+1. Archive raw documents and manifests (running across all agencies).
+2. Extract tables from the PDFs (pdfplumber + checked vision transcription; in progress).
 3. Publish (searchable database).
+
+## Analyses
+`analyses/<name>/`: one folder per piece of analysis, with a `rebuild.py` (or `.R`) that reproduces every published number and asserts the headline figures. First: `analyses/jobseeker-deaths/`.
