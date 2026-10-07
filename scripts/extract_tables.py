@@ -1,6 +1,6 @@
 """Phase 2 prototype: extract tables from archived FOI PDFs with pdfplumber.
 
-Input:  data/survey/survey_docs.csv (from the document survey), filtered by --classes.
+Input:  data/survey/survey_docs.csv by default, or --survey <csv> (scripts/survey.py writes one), filtered by --classes.
 Output: data/extract/<source>/<reference>/<pdf-stem>/p<page>_t<n>.csv  (one CSV per table)
         data/extract/tables_index.csv  (one row per table, appended after each document)
         data/extract/docs_done.csv     (one row per finished document, for resuming)
@@ -53,10 +53,11 @@ def main():
     ap.add_argument("--max-pages", type=int, default=0, help="0 = all pages")
     ap.add_argument("--classes", default="pdf: has numeric tables")
     ap.add_argument("--only", default="", help="substring of file path to run on one document")
+    ap.add_argument("--survey", default=f"{ROOT}/survey/survey_docs.csv", help="survey CSV to read documents from")
     a = ap.parse_args()
 
     classes = {c.strip() for c in a.classes.split(",")}
-    with open(f"{ROOT}/survey/survey_docs.csv", encoding="utf-8") as fh:
+    with open(a.survey, encoding="utf-8") as fh:
         docs = [r for r in csv.DictReader(fh) if r["class"] in classes and (not a.only or a.only in r["file"])]
     done = set()
     if os.path.exists(f"{OUT}/docs_done.csv"):
