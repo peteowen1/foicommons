@@ -12,13 +12,16 @@ Layout (all under data/, gitignored):
 
 meta.json fields:
   source_pdf (path), pages (list of ints), title, units, transcriber (model), notes,
-  row_sums: [{"parts": [col, ...], "total": col, "tol": 0}]            each row: sum(parts) == total
+  row_sums: [{"parts": [col, ...], "total": col, "tol": 0, "skip": "^Ave"}]   each row: sum(parts) == total
+              (optional skip: regex on the first column for rows the rule does not cover)
   col_totals: [{"col": col, "group_by": col or null, "totals": {group: value}, "tol": 0.006}]
               sum of col within each group == printed total (tol covers source rounding)
 
 Usage:
   python scripts/vision_tools.py pages  <pdf>                  # list pages likely holding tables
   python scripts/vision_tools.py render <pdf> <source> <ref> [pages, e.g. 1,2,5-9] [--dpi 110]
+  python scripts/vision_tools.py strips <page_288.png> <out_dir>  # table area cut into zoomed strips
+  python scripts/vision_tools.py sheets                        # contact sheets of every scanned page (triage)
   python scripts/vision_tools.py verify                        # check every vision table, write report
 """
 import csv, json, os, re, subprocess, sys
@@ -59,6 +62,121 @@ def cmd_pages(pdf):
     print(json.dumps({"pdf": pdf, "table_pages": table_pages, "scanned_pages": scanned}))
 
 
+def cmd_sheets(survey=f"{ROOT}/survey/survey_docs.csv", dpi=36, per=16, cols=4):
+    """Contact sheets for scanned documents: every page rendered small and tiled 4x4 with its page
+    number, so a vision pass can pick out the table pages without opening 1,900 images.
+    Writes data/extract/vision/scanned/sheets/*.png and scanned/sheets_index.json."""
+    from PIL import Image, ImageDraw
+    out_dir = f"{VISION}/scanned/sheets"
+    os.makedirs(out_dir, exist_ok=True)
+    with open(survey, encoding="utf-8") as fh:
+        docs = [d for d in csv.DictReader(fh) if d["class"] == "pdf: scanned/image only"]
+    index = []
+    per_ref = {}
+    for d in docs:
+        per_ref[(d["source"], d["reference"])] = per_ref.get((d["source"], d["reference"]), 0) + 1
+    for d in docs:
+        pdf = d["file"].replace("\\", "/")
+        # A reference can hold several PDFs (part-1, part-2): key those by file name too, or they share one folder
+        key = slug(d["reference"])
+        if per_ref[(d["source"], d["reference"])] > 1:
+            key += "__" + slug(os.path.splitext(os.path.basename(pdf))[0])
+        thumb_dir = f"{ROOT}/pages/{d['source']}/{key}/thumb{dpi}"
+        if not os.path.isdir(thumb_dir) or not os.listdir(thumb_dir):
+            os.makedirs(thumb_dir, exist_ok=True)
+            subprocess.run(["pdftoppm", "-r", str(dpi), "-gray", "-png", pdf, f"{thumb_dir}/t"], capture_output=True)
+        # pdftoppm pads page numbers to the width of the page count: t-1.png or t-001.png
+        thumbs = sorted(((int(re.search(r"-(\d+)\.png$", f).group(1)), f"{thumb_dir}/{f}") for f in os.listdir(thumb_dir)))
+        if not thumbs:
+            print(f"no pages rendered: {pdf}")
+            continue
+        for s in range(0, len(thumbs), per):
+            chunk = thumbs[s:s + per]
+            ims = [Image.open(p) for _, p in chunk]
+            w, h = max(i.width for i in ims), max(i.height for i in ims)
+            rows = (len(ims) + cols - 1) // cols
+            sheet = Image.new("L", (cols * (w + 8), rows * (h + 26)), 255)
+            draw = ImageDraw.Draw(sheet)
+            for k, ((pg, _), im) in enumerate(zip(chunk, ims)):
+                x, y = (k % cols) * (w + 8), (k // cols) * (h + 26)
+                draw.text((x + 4, y + 4), f"p{pg}", fill=0, font_size=18)
+                sheet.paste(im, (x, y + 24))
+                draw.rectangle([x, y + 24, x + im.width - 1, y + 24 + im.height - 1], outline=0)
+            name = f"{d['source']}__{key}__{s // per + 1:02d}.png"
+            sheet.save(f"{out_dir}/{name}")
+            index.append({"sheet": f"{out_dir}/{name}", "source": d["source"], "reference": d["reference"],
+                          "file": pdf, "pages": [pg for pg, _ in chunk], "title": d["title"]})
+    with open(f"{VISION}/scanned/sheets_index.json", "w", encoding="utf-8") as fh:
+        json.dump(index, fh, indent=1)
+    print(f"{len(docs)} documents, {sum(len(i['pages']) for i in index)} pages, {len(index)} sheets")
+
+
+def cmd_strips(png, out_dir, target=900, top_skip=200):
+    """Crop a page (288 dpi render) to its table area and cut it into horizontal strips at gridlines.
+    Dense scanned tables have ~8 px digits at page size; a vision model reads them far better when
+    the image it is given is only as wide as the table. Strips are cut on ruled lines, never mid-row."""
+    from PIL import Image
+    im = Image.open(png).convert("L")
+    w, h = im.size
+    px = im.load()
+    dark = lambda x, y: px[x, y] < 128
+    # Table area: dark pixels below the running header (top_skip px), with a small margin
+    ys = [y for y in range(top_skip, h, 2) if any(dark(x, y) for x in range(0, w, 4))]
+    xs = [x for x in range(0, w, 2) if any(dark(x, y) for y in range(top_skip, h, 4))]
+    x0, x1, y0, y1 = max(min(xs) - 10, 0), min(max(xs) + 10, w), max(min(ys) - 10, 0), min(max(ys) + 10, h)
+    # Gridlines: rows where most of the table width is dark
+    lines = [y for y in range(y0, y1) if sum(dark(x, y) for x in range(x0, x1, 6)) > 0.6 * (x1 - x0) / 6]
+    cuts, last = [y0], y0
+    while y1 - last > target * 1.3:
+        near = [y for y in lines if last + target * 0.7 < y < last + target * 1.3]
+        cut = min(near, key=lambda y: abs(y - last - target)) if near else last + target
+        cuts.append(cut)
+        last = cut
+    cuts.append(y1)
+    os.makedirs(out_dir, exist_ok=True)
+    stem = os.path.basename(png).replace("_288", "")[:-4]
+    paths = []
+    for i, (a, b) in enumerate(zip(cuts, cuts[1:]), 1):
+        p = f"{out_dir}/{stem}_s{i}.png"
+        im.crop((x0, a, x1, b + 2)).save(p)
+        paths.append(p)
+    print(json.dumps({"page": png, "table_box": [x0, y0, x1, y1], "strips": paths}))
+    return paths
+
+
+def cmd_tiles(strip, out_dir, target=1600):
+    """Cut a very wide table strip into vertical tiles at column gridlines, each with the row-label
+    column pasted on its left. A 4,600 px strip is shrunk to ~1,568 px by the vision model, making
+    digits a third of their size; tiles keep them legible and keep every row's label beside its numbers."""
+    from PIL import Image
+    im = Image.open(strip).convert("L")
+    w, h = im.size
+    px = im.load()
+    # Column gridlines: x where most of the strip's height is dark
+    vlines = [x for x in range(w) if sum(px[x, y] < 128 for y in range(0, h, 4)) > 0.6 * h / 4]
+    gaps = [x for i, x in enumerate(vlines) if i == 0 or x - vlines[i - 1] > 3]   # one x per line
+    label_end = next((x for x in gaps if x > 0.05 * w), int(0.15 * w))
+    label = im.crop((0, 0, label_end + 2, h))
+    cuts, last = [label_end], label_end
+    while w - last > target * 1.2:
+        near = [x for x in gaps if last + target * 0.6 < x < last + target * 1.2]
+        cut = min(near, key=lambda x: abs(x - last - target)) if near else last + target
+        cuts.append(cut)
+        last = cut
+    cuts.append(w)
+    os.makedirs(out_dir, exist_ok=True)
+    stem = os.path.basename(strip)[:-4]
+    paths = []
+    for i, (a, b) in enumerate(zip(cuts, cuts[1:]), 1):
+        tile = Image.new("L", (label.width + (b - a) + 2, h), 255)
+        tile.paste(label, (0, 0))
+        tile.paste(im.crop((a, 0, b + 2, h)), (label.width, 0))
+        p = f"{out_dir}/{stem}_c{i}.png"
+        tile.save(p)
+        paths.append(p)
+    return paths
+
+
 def parse_pages(spec, total):
     if not spec:
         return list(range(1, total + 1))
@@ -85,6 +203,19 @@ def norm(v):
     return v.strip().replace(",", "").replace("$", "").replace("%", "")
 
 
+def cells_agree(a, b):
+    """Do transcriptions A and B of one cell count as the same reading?
+
+    Numbers: must match exactly once separators are dropped (a scanned 8 read as 3 must fail).
+    Labels (years, payment names, regions): this decides whether harmless differences like
+    "JobSeeker Payment" vs "Jobseeker payment", "2019-20" vs "2019–20" (en dash), or a stray
+    double space count as agreement. Too strict floods the report with flags nobody needs to
+    look at; too loose lets a misread label ("NSW" vs "NT") through.
+    """
+    # TODO(Pete): decide the label rule. Return True when a and b are the same reading.
+    return norm(a) == norm(b)
+
+
 def to_float(v):
     try:
         return float(norm(v).strip("()"))
@@ -97,9 +228,44 @@ def read_csv(path):
         return list(csv.DictReader(fh))
 
 
+_CONFIRMED = None
+
+
+def confirmed():
+    """table (relative to the vision folder) -> values confirmed despite an OCR miss."""
+    global _CONFIRMED
+    if _CONFIRMED is None:
+        _CONFIRMED = {}
+        path = f"{VISION}/confirmations.csv"
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as fh:
+                for r in csv.DictReader(fh):
+                    _CONFIRMED.setdefault(r["table"], set()).add(r["value"])
+    return _CONFIRMED
+
+
+def ocr_missing(meta, rows):
+    """Numbers in the table that an independent OCR reading of the page does not contain.
+    Returns (missing values, numbers checked). Shared by verify and corroborate_flags.py."""
+    tokens, digits = set(), set()
+    for path in meta["ocr"]:
+        with open(path, encoding="utf-8") as fh:
+            for _, s, _ in json.load(fh):
+                digits.update(re.sub(r"\D", "", run) for run in re.findall(r"\d[\d,. ]*", s))
+                for t in NUM_TOKEN.findall(s.replace(" ", "").replace(",.", ".")):
+                    t = t.replace(",", "").rstrip(".")
+                    tokens.add(t)
+                    if re.fullmatch(r"\d{1,3}\.\d{3}", t):   # OCR reads a thousands comma as a full stop
+                        tokens.add(t.replace(".", ""))
+    nums = [norm(v).strip("()").lstrip("-") for r in rows for v in r.values() if NUM_CELL.match(v.strip().replace(" ", ""))]
+    nums = [v for v in nums if len(v.split(".")[0]) > 1]   # lone digits (0, 5) are mostly dropped by OCR; sums cover them
+    # OCR often swaps or drops separators (22,356.73 -> "22.356.73"), so also accept a match on digits alone
+    return [v for v in nums if v not in tokens and re.sub(r"\D", "", v) not in digits], len(nums)
+
+
 def check_table(base, meta):
     """Returns dict of check results for one table (base = path without extension)."""
-    res = {"table": base, "text_layer": "", "ab_agree": "", "row_sums": "", "col_totals": "", "status": "", "detail": ""}
+    res = {"table": base, "text_layer": "", "ocr": "", "ab_agree": "", "row_sums": "", "col_totals": "", "status": "", "detail": ""}
     detail = []
     a, b, final = f"{base}.A.csv", f"{base}.B.csv", f"{base}.csv"
 
@@ -112,7 +278,7 @@ def check_table(base, meta):
         else:
             for i, (x, y) in enumerate(zip(ra, rb)):
                 for k in x:
-                    if norm(x[k]) != norm(y.get(k, "")):
+                    if not cells_agree(x[k], y.get(k, "")):
                         diffs.append(f"row {i + 1} {k}: A={x[k]!r} B={y.get(k)!r}")
         res["ab_agree"] = "pass" if not diffs else f"fail ({len(diffs)})"
         detail += diffs[:10]
@@ -136,10 +302,28 @@ def check_table(base, meta):
     else:
         res["text_layer"] = "n/a (scanned)"
 
+    # Check: scanned pages have no text layer, so every number must appear in an independent OCR
+    # reading of the page instead (meta "ocr": RapidOCR JSON per page, from ocr_pages.py).
+    # OCR drops most lone zeros, so "0" is not checked; sums catch a zero misread.
+    if meta.get("ocr") and not all(os.path.exists(p) for p in meta["ocr"]):
+        res["ocr"] = "pending"
+        detail.append("OCR not run yet for: " + ", ".join(p for p in meta["ocr"] if not os.path.exists(p)))
+    elif meta.get("ocr"):
+        missing, n = ocr_missing(meta, rows)
+        # Numbers OCR missed but confirmed another way (arithmetic, or a blind second reading that agrees):
+        # data/extract/vision/confirmations.csv, written by the flag review (corroborate_flags.py + blind re-read)
+        conf = confirmed().get(base.split("vision/")[1], set())
+        left = [v for v in missing if v not in conf]
+        res["ocr"] = ("pass" if not missing else f"pass (confirmed {len(missing)})") if not left else f"fail ({len(left)}/{n})"
+        missing = left
+        detail += [f"not in OCR: {m}" for m in missing[:10]]
+
     # Check: declared row sums
     rs_fail = []
     for rule in meta.get("row_sums", []):
         for i, r in enumerate(rows):
+            if rule.get("skip") and re.match(rule["skip"], next(iter(r.values()), "")):
+                continue   # e.g. "^Ave" rows: averages, not counts, so parts don't add up
             parts = [to_float(r.get(c, "")) for c in rule["parts"]]
             tot = to_float(r.get(rule["total"], ""))
             if tot is None or any(p is None for p in parts):
@@ -162,9 +346,12 @@ def check_table(base, meta):
         res["col_totals"] = "pass" if not ct_fail else f"fail ({len(ct_fail)})"
         detail += ct_fail[:10]
 
-    checks = [res[k] for k in ("text_layer", "ab_agree", "row_sums", "col_totals")]
+    checks = [res[k] for k in ("text_layer", "ocr", "ab_agree", "row_sums", "col_totals")]
     ran = [c for c in checks if c and not c.startswith("n/a")]
-    res["status"] = "pass" if ran and all(c == "pass" for c in ran) else ("flag" if ran else "unchecked")
+    if "pending" in ran:
+        res["status"], res["detail"] = "pending", "; ".join(detail)
+        return res
+    res["status"] = "pass" if ran and all(c.startswith("pass") for c in ran) else ("flag" if ran else "unchecked")
     res["detail"] = "; ".join(detail)
     return res
 
@@ -184,7 +371,7 @@ def cmd_verify():
         w.writeheader()
         w.writerows(out)
     for r in out:
-        print(f"{r['status']:9} text={r['text_layer']:14} ab={r['ab_agree']:10} rows={r['row_sums']:10} cols={r['col_totals']:10} {r['table'][-70:]}")
+        print(f"{r['status']:9} text={r['text_layer']:14} ocr={r['ocr']:10} ab={r['ab_agree']:10} rows={r['row_sums']:10} cols={r['col_totals']:10} {r['table'][-70:]}")
     print(f"{len(out)} tables: {sum(r['status'] == 'pass' for r in out)} pass, "
           f"{sum(r['status'] == 'flag' for r in out)} flag, {sum(r['status'] == 'unchecked' for r in out)} unchecked")
 
@@ -200,5 +387,9 @@ if __name__ == "__main__":
         cmd_pages(args[1])
     elif args[0] == "render":
         cmd_render(args[1], args[2], args[3], args[4] if len(args) > 4 else "", dpi)
+    elif args[0] == "strips":
+        cmd_strips(args[1], args[2], top_skip=int(args[3]) if len(args) > 3 else 200)
+    elif args[0] == "sheets":
+        cmd_sheets()
     elif args[0] == "verify":
         cmd_verify()

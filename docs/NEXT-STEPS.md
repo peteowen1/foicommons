@@ -24,7 +24,10 @@ that started the repo).
 - **All-agency archive (running).** Registry of 195 agencies (AGOR, 30 June 2026); 92 with a log
   URL found (155 logs); 22 blocked (403 or challenge pages: ACCC, Ombudsman, APH, FWC, Federal
   Court, ...). `run_full.sh` is harvesting alphabetically (at Attorney-General's Department at
-  17:23, 7 October). Log: `data/logs/harvest.log`. Resume: `nohup ./run_full.sh >> data/logs/harvest.log 2>&1 &`.
+  17:23, 7 October). Log: `data/logs/harvest.log`. It died silently at 17:28 (the `nohup` launch did
+  not outlive its Claude session); relaunched 21:06 as a detached Windows process. Resume the same way
+  (PowerShell): `Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='"C:/Program Files/Git/bin/bash.exe" -lc "cd /c/dev/foicommons && ./run_full.sh >> data/logs/harvest.log 2>&1"'}`.
+  Check it is alive with `tasklist | grep Rscript`, not Git Bash `ps` (which can't see Rscript.exe).
   Estimate 12-25 hours; tens of GB. Phase 2 of the run: fallback discovery for agencies with no log found.
 - **Extraction.** pdfplumber over the 49 table-bearing phase 1 documents: 1,038 numeric tables
   (`data/extract/tables_index.csv`). Vision transcription over the 13 unruled documents: 21 tables,
@@ -35,9 +38,9 @@ that started the repo).
 
 ## Queue (ranked)
 
-1. **Scanned batch (72 documents)**: two independent vision transcriptions per table, A/B must
-   agree (`vision_tools.py verify`). Build the queue from `data/survey/survey_docs.csv`
-   (class "pdf: scanned/image only") plus scanned pages inside mixed documents. About 2-3 agent runs.
+1. **Scanned batch: done 7 October.** 308 tables, 307 pass (1 is a source arithmetic error); FOI LEX
+   55799 clean table built and checked. Left: fix the `cmd_tiles` label-column bug before reusing it;
+   commit this session's scripts through the review gate.
 2. **Internet Archive history**: agencies drop documents after about 2 years (FOI 2122-068 is already
    off the current DSS log). Use the Wayback CDX API for old snapshots of each log and their PDFs,
    politely. Biggest source of missing history.
@@ -47,7 +50,7 @@ that started the repo).
    Raw PDFs stay local; they can be re-fetched while still online, so the Internet Archive step matters.
 5. **Jericho piece follow-ups**: interactive SVG flow chart (site rule; current one is a mermaid
    placeholder); Newstart totals for 2007-2012 to turn the FOI 19/20-073 partial-capacity counts into
-   shares; confirm the Coronavirus Supplement's 27 April 2020 start date.
+   shares. (Coronavirus Supplement start date of 27 April 2020 confirmed against the Parliamentary Library, 7 October.)
 6. **Chart-reading pass**: data-labelled charts skipped by the table pass (NDIS survey charts in
    FOI 2021-064, 1800RESPECT stats in 16/17-082).
 

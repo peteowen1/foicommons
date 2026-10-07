@@ -63,3 +63,34 @@ per page and runs unattended. Decide once the archive run finishes and page coun
 - Skipped pages were mostly charts (NDIS survey bar charts in FOI 2021-064, 1800RESPECT web
   stats, homelessness line charts). Open gap: a chart-reading pass for data-labelled charts.
 - Next: scanned queue (72 documents) with two independent transcriptions per table.
+- 7 October 2026 (evening): scanned batch done. 72 scanned documents, 1,929 pages triaged from contact
+  sheets (`vision_tools.py sheets`) to 178 table pages (`ocr_pages.py queue`). Pages cut into zoomed table
+  strips (`vision_tools.py strips`; very wide tables into labelled column tiles, `tiles`) and transcribed by
+  Sonnet agents, one pass each. The second transcription was replaced by an independent free check: every
+  number must appear in a RapidOCR reading of the page (`ocr_pages.py ocr`; tile OCR for the wide pages),
+  plus printed row sums and totals. Result: 308 scanned tables, 226 pass, 82 flag. 81 flags are numbers
+  OCR did not find (136 numbers in all, mostly 1-4 per table; the transcriber says each is clearly printed,
+  which is not yet independently confirmed). 1 flag is a source arithmetic error (FOI 2122-026 p36 t5, 72.3).
+- Pilot findings: Haiku on full pages invented rows and numbers (all 3 tables flagged); Haiku on strips
+  still disagreed with Sonnet on 16 of 300 cells; Sonnet on strips read every checked cell correctly for
+  similar tokens. Zoomed strips matter more than the model. Resuming an agent to relabel costs as much as
+  the original run (~110k tokens): do label fixes with a script over the CSVs.
+- FOI LEX 55799 tables are copied AS PRINTED, including its export misalignment (a group heading row
+  carries the first category's numbers; that category's own row is blank). Label prefixes differ between
+  batches. Both are for a cleaning step that writes a separate clean table; design it with Pete on rows first.
+- Known tile bug: `cmd_tiles` takes the first gridline past 5% of the width as the label column's edge; on
+  the 55799 wide tables that swallowed 1-2 data columns, repeated on every tile. Agents worked around it
+  (row sums pass). Fix before reuse.
+- 7 October 2026 (late): flags settled. The 136 numbers OCR could not find: 95 corroborated by arithmetic
+  (row sums, or the 16 group identities in `clean_55799.py`), 40 by a blind second reading that agreed
+  (reader given row and column, not the value), 1 by a printed note ($726.35 x 4). Recorded in
+  `data/extract/vision/confirmations.csv`; verify reports these as "pass (confirmed N)".
+  Now: 308 scanned tables, 307 pass; the 1 flag is a source arithmetic error (FOI 2122-026 p36 t5, 72.3).
+  One real transcription error was found by the clean-table identities and fixed (55799 April Not
+  Specified, AIC, Rent Assistance n/a: transcribed 20, page prints 0).
+- FOI LEX 55799 clean table: `scripts/clean_55799.py` -> data/extract/clean/foi_lex_55799_student_recipients.csv,
+  5,024 rows, 12 monthly reports (31 Jan to 26 Dec 2025) x 6 sectors. Moves each group's first category off
+  the heading line (rule agreed with Pete on part-2 p2 rows); every identity passes in every block.
+  Report dates come from the "as at" dates in the page OCR.
+- Tried and rejected: Windows built-in OCR (Windows.Media.Ocr via PowerShell 5.1) on the 55799 pages split
+  numbers ("16 620"), garbled labels and lost reading order; RapidOCR (pip `rapidocr-onnxruntime`) was used.
