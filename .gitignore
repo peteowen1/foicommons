@@ -1,0 +1,7 @@
+data/
+*.part
+.Rproj.user/
+.Rhistory
+__pycache__/
+*.pyc
+scratch/
