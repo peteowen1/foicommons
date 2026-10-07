@@ -152,15 +152,14 @@ AIHW Table S13 (unemployment payments) and S12 (non-recipients): suicide + accid
 | 3 September 2011 | DSP: unless 20+ points on a single impairment table, claimants must first do 18 months in a "program of support" | [Senate Community Affairs report](https://aph.gov.au/Parliamentary_Business/Committees/Senate/Community_Affairs/Completed_inquiries/2010-13/familyassistance11/report/c04); [Legal Aid NSW](https://www.legalaid.nsw.gov.au/ways-to-get-help/publications-and-resources/disability-support-pension) |
 | 1 January 2012 | DSP: revised impairment tables (first full review since 1993) | [Minister Macklin media release](https://formerministers.dss.gov.au/13610/updated-impairment-tables-for-disability-support-pensioners) |
 | March 2020 | Mutual obligations suspended (resumed in phases from 9 June 2020, no penalties at first) | [InDaily, 3 June 2020](https://indaily.com.au/news/2020/06/03/centrelink-mutual-obligations-to-resume-for-unemployed-but-questions-remain) |
-| 27 April 2020 | Coronavirus Supplement $550 a fortnight | [Thomson Reuters](https://insight.thomsonreuters.com.au/tax/posts/jobseeker-supplement-extended-to-march-2021-at-reduced-rate) |
-| 25 September 2020 | Supplement cut to $250 | same |
+| 27 April 2020 | Coronavirus Supplement $550 a fortnight | [Parliamentary Library FlagPost, 23 March 2020](https://www.aph.gov.au/About_Parliament/Parliamentary_departments/Parliamentary_Library/FlagPost/2020/March/New_coronavirus_supplement) |
+| 25 September 2020 | Supplement cut to $250 | [Thomson Reuters](https://insight.thomsonreuters.com.au/tax/posts/jobseeker-supplement-extended-to-march-2021-at-reduced-rate) |
 | 1 January 2021 | Supplement cut to $150 | same |
 | 31 March 2021 | Supplement ends | same |
 | 1 April 2021 | Permanent JobSeeker rise of $50 a fortnight; income-free area to $150 | [Minister Ruston media release](https://formerministers.dss.gov.au/?p=19375); [Bills Digest 55, 2020-21](https://aph.gov.au/Parliamentary_Business/Bills_Legislation/bd/bd2021a/21bd055) |
 
 - The DSP grant rate fell from 59.8% (2011) to 48.5% (2012) and 25.7% (2016), in line with the 2011-12 rule changes.
 - The 2021-22 despair-death drop sits after the permanent rise, so a payment effect can't be ruled out for those years.
-- The 27 April 2020 start date is from the payment's design (well known) but the source above confirms only the later steps; check before quoting.
 
 ## Open items
 
