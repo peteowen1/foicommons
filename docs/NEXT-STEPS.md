@@ -38,9 +38,9 @@ that started the repo).
 
 ## Queue (ranked)
 
-1. **Scanned batch: done 7 October.** 308 tables, 307 pass (1 is a source arithmetic error); FOI LEX
-   55799 clean table built and checked. Left: fix the `cmd_tiles` label-column bug before reusing it;
-   commit this session's scripts through the review gate.
+1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic
+   error and 3 unresolvable blurry averages (see the plan's status lines). FOI LEX 55799 clean table:
+   5,040 rows, every identity passes. Left: open the first PR to `main` once there is a `main` branch.
 2. **Internet Archive history**: agencies drop documents after about 2 years (FOI 2122-068 is already
    off the current DSS log). Use the Wayback CDX API for old snapshots of each log and their PDFs,
    politely. Biggest source of missing history.

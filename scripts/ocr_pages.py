@@ -46,13 +46,15 @@ def cmd_queue():
         for dpi, suffix in ((144, ""), (288, "_288")):
             target = f"{d}/p{p['page']:04d}{suffix}.png"
             if not os.path.exists(target):
-                subprocess.run(["pdftoppm", "-f", str(p["page"]), "-l", str(p["page"]), "-r", str(dpi), "-gray", "-png",
-                                "-singlefile", p["file"], target[:-4]], capture_output=True)
+                r = subprocess.run(["pdftoppm", "-f", str(p["page"]), "-l", str(p["page"]), "-r", str(dpi), "-gray", "-png",
+                                    "-singlefile", p["file"], target[:-4]], capture_output=True)
+                if r.returncode:
+                    print(f"pdftoppm failed ({r.returncode}) on {p['file']} p{p['page']}: {r.stderr.decode(errors='ignore')[:200]}")
         q.append({**p, "key": key, "image": f"{d}/p{p['page']:04d}.png",
                   "ocr": f"{SCANNED}/ocr/{p['source']}/{key}/p{p['page']:04d}.json"})
     q.sort(key=lambda e: (e["source"], e["key"], e["page"]))
     json.dump(q, open(f"{SCANNED}/queue.json", "w", encoding="utf-8"), indent=1)
-    missing = [e["image"] for e in q if not os.path.exists(e["image"])]
+    missing = [x for e in q for x in (e["image"], e["image"][:-4] + "_288.png") if not os.path.exists(x)]
     print(f"{len(q)} pages queued from {len(pages)} triaged; {len(missing)} failed to render {missing[:3]}")
 
 
@@ -64,7 +66,13 @@ def cmd_ocr():
     print(f"{len(q)} pages, {len(todo)} still to OCR", flush=True)
     t0 = time.time()
     for n, e in enumerate(todo, 1):
-        res, _ = eng(e["image"][:-4] + "_288.png")
+        src = e["image"][:-4] + "_288.png"
+        if not os.path.exists(src):
+            print(f"missing {src}; skipped (run queue first)")
+            continue
+        res, _ = eng(src)
+        if not res:
+            print(f"WARNING: OCR found no text on {src}; saved as empty, so every number in its tables will flag")
         os.makedirs(os.path.dirname(e["ocr"]), exist_ok=True)
         tmp = e["ocr"] + ".part"
         json.dump([[b, s, float(c)] for b, s, c in (res or [])], open(tmp, "w", encoding="utf-8"))

@@ -11,7 +11,7 @@ result against identities that only hold if the move is right.
 Writes data/extract/clean/foi_lex_55799_student_recipients.csv and prints every check.
 """
 import csv, glob, json, os, re, sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 ROOT = "C:/dev/foicommons/data"
 RAW = f"{ROOT}/extract/vision/dss"
@@ -65,16 +65,22 @@ def num(v):
 
 def main():
     dates = report_dates()
-    tables = []
+    tables, skipped_tables = [], []
     for i, part in enumerate(PARTS):
         for f in glob.glob(f"{RAW}/FOI_LEX_55799__foi-lex-55799-{part}/p*_t*.csv"):
             rows = list(csv.reader(open(f, encoding="utf-8")))
             if rows[0] != STD:
+                if set(COLS) <= set(rows[0]):
+                    raise SystemExit(f"{f}: has every standard column but not the standard header {rows[0]}")
+                skipped_tables.append(",".join(rows[0][:4]))
                 continue
             b = os.path.basename(f)[:-4]
             tables.append(((i, int(b[1:5]), int(b.split("_t")[1])), f, rows[1:]))
     tables.sort()
-    print(f"{len(tables)} standard tables; report dates: {[d for _, d in dates]}")
+    print(f"{len(tables)} standard tables used; {len(skipped_tables)} other tables left out, by header:")
+    for h, c in Counter(skipped_tables).most_common():
+        print(f"  {c:3}  {h}...")
+    print(f"report dates: {sorted({d for _, d in dates})}")
 
     out, anomalies = [], []
     sector, group, pending, block = None, None, None, None
@@ -101,6 +107,8 @@ def main():
             if label in HEADINGS:
                 if blank and label == group and pending:
                     continue   # heading repeated, blank, at the top of the next page: keep its numbers waiting
+                if pending:
+                    anomalies.append(f"{src}: heading {pending[0]} numbers dropped: next row is heading {label!r}")
                 group = label
                 pending = (label, vals, src, base, line) if not blank else None
                 continue
@@ -136,30 +144,39 @@ def main():
     for a in anomalies[:15]:
         print("  ", a)
 
-    vouched = defaultdict(set)   # (raw_table, raw_line, column) -> identities that pass through this cell
+    # (raw_table, raw_line, column) -> {identity: |difference|} for passing identities through this cell.
+    # Only an exact match (difference 0) confirms a cell: rounding noise can hide a misread of 5 or 10.
+    vouched = defaultdict(dict)
+    skipped = {}
 
     def check(name, group, parts, total):
         total = total if isinstance(total, tuple) else (group, total)
         parts = [(group, p) for p in parts]
         ok = bad = 0
-        fails = []
+        fails, miss = [], []
         for bk, rows in blocks.items():
             if total not in rows or not all(p in rows for p in parts):
+                miss.append(bk)   # a block without these rows is a gap, not a pass: reported below
                 continue
             for c in range(6):
                 vals = [rows[p][0][c] for p in parts]
                 tv = rows[total][0][c]
                 if tv is None or any(v is None for v in vals):
+                    miss.append((bk, COLS[c]))
                     continue
-                if abs(sum(vals) - tv) <= 2.5 * (len(parts) + 1):
+                diff = abs(sum(vals) - tv)
+                if diff <= 2.5 * (len(parts) + 1):
                     ok += 1
                     for cell in parts + [total]:
-                        vouched[(rows[cell][1], rows[cell][2], COLS[c])].add(name)
+                        vouched[(rows[cell][1], rows[cell][2], COLS[c])][name] = diff
                 else:
                     bad += 1
                     fails.append(f"{bk} {COLS[c]}: {sum(vals):g} vs {tv:g}")
-        print(f"  {name}: {ok} pass, {bad} fail {fails[:3]}")
+        print(f"  {name}: {ok} pass, {bad} fail {fails[:3]}" + (f"; NOT TESTED {len(miss)}: {miss[:3]}" if miss else ""))
+        skipped[name] = len(miss)
+        failures.append(bad)
 
+    failures = []
     T = ("", "Total")
     print("identities that depend on the heading-line move:")
     check("age under 25", "Age", ["Under 18", "18-20", "21-24"], "Under 25")
@@ -182,10 +199,36 @@ def main():
 
     with open(OUT.replace(".csv", "_vouched_cells.csv"), "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
-        w.writerow(["raw_table", "raw_line", "column", "identities"])
+        w.writerow(["raw_table", "raw_line", "column", "identities", "exact_identities"])
         for (t, ln, c), names in sorted(vouched.items()):
-            w.writerow([t, ln, c, ";".join(sorted(names))])
-    print(f"{len(vouched)} raw cells vouched for by at least one passing identity")
+            w.writerow([t, ln, c, ";".join(sorted(names)), ";".join(sorted(k for k, d in names.items() if d == 0))])
+    print(f"{len(vouched)} raw cells in at least one passing identity, "
+          f"{sum(1 for v in vouched.values() if 0 in v.values())} in an exact one")
+
+    # Fail loudly: every block must have the same rows, all 12 x 6 blocks must exist, every identity must
+    # pass, and no identity may skip a block. A dropped table or row shows up here, not as a smaller count.
+    shape = defaultdict(list)
+    for bk, rows in blocks.items():
+        shape[frozenset(rows)].append(bk)
+    problems = []
+    if len(shape) > 1:
+        common = max(shape, key=lambda k: len(shape[k]))
+        for keys, bks in shape.items():
+            if keys != common:
+                problems.append(f"{bks}: missing {sorted(common - keys)[:5]}, extra {sorted(keys - common)[:5]}")
+    if len(blocks) != 72 or None in {b[0] for b in blocks} or None in {b[1] for b in blocks}:
+        problems.append(f"expected 12 reports x 6 sectors with dates and sectors, got {sorted(blocks)[:3]}... ({len(blocks)})")
+    if any(failures):
+        problems.append(f"{sum(failures)} identity failures")
+    if anomalies:
+        problems.append(f"{len(anomalies)} anomalies")
+    for name, n in skipped.items():
+        if n:
+            problems.append(f"identity {name} could not be tested in {n} block/columns")
+    for pr in problems:
+        print("PROBLEM:", pr)
+    if problems:
+        return 1
     return 0
 
 

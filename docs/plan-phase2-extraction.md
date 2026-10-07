@@ -89,8 +89,20 @@ per page and runs unattended. Decide once the archive run finishes and page coun
   One real transcription error was found by the clean-table identities and fixed (55799 April Not
   Specified, AIC, Rent Assistance n/a: transcribed 20, page prints 0).
 - FOI LEX 55799 clean table: `scripts/clean_55799.py` -> data/extract/clean/foi_lex_55799_student_recipients.csv,
-  5,024 rows, 12 monthly reports (31 Jan to 26 Dec 2025) x 6 sectors. Moves each group's first category off
+  5,040 rows (after the review fix), 12 monthly reports (31 Jan to 26 Dec 2025) x 6 sectors. Moves each group's first category off
   the heading line (rule agreed with Pete on part-2 p2 rows); every identity passes in every block.
   Report dates come from the "as at" dates in the page OCR.
 - Tried and rejected: Windows built-in OCR (Windows.Media.Ocr via PowerShell 5.1) on the 55799 pages split
   numbers ("16 620"), garbled labels and lost reading order; RapidOCR (pip `rapidocr-onnxruntime`) was used.
+- 7 October 2026 (review fixes): the pre-PR review found real gaps, now fixed. (1) 55799 March 2025 Higher
+  Education was missing 18 rows (transcription stopped at a strip cut; every check passed because identity
+  checks skipped the block): transcribed by the lead; the clean script now fails on any missing block, row or
+  untested identity. (2) Confirmations were matched by value, not cell: now by (table, line, column).
+  (3) The OCR check skipped one-digit decimals and its digits-only match ignored the decimal point: both
+  tightened, which exposed 18 more cells. (4) Arithmetic now confirms a cell only when an identity holds
+  EXACTLY (rounding to 5 can hide a misread of 5 or 10 within tolerance); cells that had relied on tolerance
+  went to a second blind reading. Also a faint 0 left blank (Dec VET, AIC, State) and the tile label-column bug.
+  Final: 154 OCR-missed cells; 71 exact arithmetic, 78 blind second reading agreed, 1 printed note, 1 lead
+  check (blind reader said 415, page prints 390), 3 unresolvable (55799 p32 averages, 3 vs 5 at 144 dpi).
+  308 scanned tables: 306 pass, 2 flag (FOI 2122-026 p36 t5 source arithmetic; 55799 p32 the 3 averages).
+  Clean 55799 table: 5,040 rows = 72 blocks x 70 rows; all 16 identities pass in all 432 block-columns.

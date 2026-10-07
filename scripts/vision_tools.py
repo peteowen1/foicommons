@@ -84,12 +84,16 @@ def cmd_sheets(survey=f"{ROOT}/survey/survey_docs.csv", dpi=36, per=16, cols=4):
         thumb_dir = f"{ROOT}/pages/{d['source']}/{key}/thumb{dpi}"
         if not os.path.isdir(thumb_dir) or not os.listdir(thumb_dir):
             os.makedirs(thumb_dir, exist_ok=True)
-            subprocess.run(["pdftoppm", "-r", str(dpi), "-gray", "-png", pdf, f"{thumb_dir}/t"], capture_output=True)
+            r = subprocess.run(["pdftoppm", "-r", str(dpi), "-gray", "-png", pdf, f"{thumb_dir}/t"], capture_output=True)
+            if r.returncode:
+                print(f"pdftoppm failed ({r.returncode}) on {pdf}: {r.stderr.decode(errors='ignore')[:200]}")
         # pdftoppm pads page numbers to the width of the page count: t-1.png or t-001.png
         thumbs = sorted(((int(re.search(r"-(\d+)\.png$", f).group(1)), f"{thumb_dir}/{f}") for f in os.listdir(thumb_dir)))
         if not thumbs:
             print(f"no pages rendered: {pdf}")
             continue
+        if len(thumbs) != n_pages(pdf):   # a killed or failed render leaves a partial folder that looks done
+            print(f"WARNING: {len(thumbs)} of {n_pages(pdf)} pages rendered for {pdf}; delete {thumb_dir} and rerun")
         for s in range(0, len(thumbs), per):
             chunk = thumbs[s:s + per]
             ims = [Image.open(p) for _, p in chunk]
@@ -129,6 +133,8 @@ def cmd_strips(png, out_dir, target=900, top_skip=200):
     cuts, last = [y0], y0
     while y1 - last > target * 1.3:
         near = [y for y in lines if last + target * 0.7 < y < last + target * 1.3]
+        if not near:
+            print(f"WARNING: no ruled line near y={last + target} in {png}; cutting there may split a row")
         cut = min(near, key=lambda y: abs(y - last - target)) if near else last + target
         cuts.append(cut)
         last = cut
@@ -153,13 +159,25 @@ def cmd_tiles(strip, out_dir, target=1600):
     w, h = im.size
     px = im.load()
     # Column gridlines: x where most of the strip's height is dark
-    vlines = [x for x in range(w) if sum(px[x, y] < 128 for y in range(0, h, 4)) > 0.6 * h / 4]
+    # A strip can hold headings and several short tables, so few lines run its full height: take lines dark
+    # over 45% of the height (the label column and left-hand columns) or 20% (shorter right-hand columns).
+    # 30% picks up text in the label column; tested on 55799 part-2 p48.
+    dark = [sum(px[x, y] < 128 for y in range(0, h, 4)) / (h / 4) for x in range(w)]
+    vlines = [x for x in range(w) if dark[x] > 0.45 or (dark[x] > 0.2 and x > 0.3 * w)]
     gaps = [x for i, x in enumerate(vlines) if i == 0 or x - vlines[i - 1] > 3]   # one x per line
-    label_end = next((x for x in gaps if x > 0.05 * w), int(0.15 * w))
+    # The label column's right edge: the first gridline well clear of the table's left border. (A fixed
+    # 5%-of-width threshold landed past the first data columns on 4,600 px tables, repeating them on every tile.)
+    left = gaps[0] if gaps else 0
+    label_end = next((x for x in gaps if x - left > 100), None)
+    if label_end is None:
+        label_end = int(0.15 * w)
+        print(f"WARNING: no label-column gridline found in {strip}; assuming 15% of the width")
     label = im.crop((0, 0, label_end + 2, h))
     cuts, last = [label_end], label_end
     while w - last > target * 1.2:
         near = [x for x in gaps if last + target * 0.6 < x < last + target * 1.2]
+        if not near:
+            print(f"WARNING: no column gridline near x={last + target} in {strip}; cutting there may split a column")
         cut = min(near, key=lambda x: abs(x - last - target)) if near else last + target
         cuts.append(cut)
         last = cut
@@ -232,7 +250,8 @@ _CONFIRMED = None
 
 
 def confirmed():
-    """table (relative to the vision folder) -> values confirmed despite an OCR miss."""
+    """(table relative to the vision folder, CSV line, column) -> (value, unsure) for numbers confirmed
+    despite an OCR miss. Keyed by cell: confirming a 20 in one cell says nothing about another 20."""
     global _CONFIRMED
     if _CONFIRMED is None:
         _CONFIRMED = {}
@@ -240,27 +259,47 @@ def confirmed():
         if os.path.exists(path):
             with open(path, encoding="utf-8") as fh:
                 for r in csv.DictReader(fh):
-                    _CONFIRMED.setdefault(r["table"], set()).add(r["value"])
+                    _CONFIRMED[(r["table"], int(r["line"]), r["column"])] = (r["value"], "unsure" in r["evidence"])
     return _CONFIRMED
 
 
 def ocr_missing(meta, rows):
-    """Numbers in the table that an independent OCR reading of the page does not contain.
-    Returns (missing values, numbers checked). Shared by verify and corroborate_flags.py."""
-    tokens, digits = set(), set()
+    """Cells whose number an independent OCR reading of the page does not contain.
+    Returns ([(csv line, column, value), ...], numbers checked). Shared by verify and corroborate_flags.py."""
+    tokens, runs = set(), set()
     for path in meta["ocr"]:
         with open(path, encoding="utf-8") as fh:
             for _, s, _ in json.load(fh):
-                digits.update(re.sub(r"\D", "", run) for run in re.findall(r"\d[\d,. ]*", s))
+                for run in re.findall(r"\d[\d,.]*\d|\d", s):
+                    tail = len(re.split(r"[,.]", run)[-1]) if re.search(r"[,.]", run) else 0
+                    runs.add((re.sub(r"\D", "", run), tail))
                 for t in NUM_TOKEN.findall(s.replace(" ", "").replace(",.", ".")):
                     t = t.replace(",", "").rstrip(".")
                     tokens.add(t)
                     if re.fullmatch(r"\d{1,3}\.\d{3}", t):   # OCR reads a thousands comma as a full stop
                         tokens.add(t.replace(".", ""))
-    nums = [norm(v).strip("()").lstrip("-") for r in rows for v in r.values() if NUM_CELL.match(v.strip().replace(" ", ""))]
-    nums = [v for v in nums if len(v.split(".")[0]) > 1]   # lone digits (0, 5) are mostly dropped by OCR; sums cover them
-    # OCR often swaps or drops separators (22,356.73 -> "22.356.73"), so also accept a match on digits alone
-    return [v for v in nums if v not in tokens and re.sub(r"\D", "", v) not in digits], len(nums)
+
+    def seen(v):
+        if v in tokens:
+            return True
+        # OCR swaps separators (22,356.73 -> "22.356.73"): accept the same digits only where the decimal point
+        # can sit in the same place, so 67.2 never matches "672" or "6.72"
+        d = re.sub(r"\D", "", v)
+        dec = len(v.split(".")[1]) if "." in v else 0
+        return any((d, t) in runs for t in ((dec,) if dec else (0, 3)))
+
+    cells, n = [], 0
+    for i, r in enumerate(rows):
+        for k, v in r.items():
+            if not NUM_CELL.match(v.strip().replace(" ", "")):
+                continue
+            v = norm(v).strip("()").lstrip("-")
+            if re.fullmatch(r"\d", v):
+                continue   # lone digits (0, 5): OCR drops most of them; sums cover them
+            n += 1
+            if not seen(v):
+                cells.append((i + 2, k, v))
+    return cells, n
 
 
 def check_table(base, meta):
@@ -310,16 +349,22 @@ def check_table(base, meta):
         detail.append("OCR not run yet for: " + ", ".join(p for p in meta["ocr"] if not os.path.exists(p)))
     elif meta.get("ocr"):
         missing, n = ocr_missing(meta, rows)
-        # Numbers OCR missed but confirmed another way (arithmetic, or a blind second reading that agrees):
+        # Cells OCR missed but confirmed another way (exact arithmetic, or a blind second reading that agrees):
         # data/extract/vision/confirmations.csv, written by the flag review (corroborate_flags.py + blind re-read)
-        conf = confirmed().get(base.split("vision/")[1], set())
-        left = [v for v in missing if v not in conf]
-        res["ocr"] = ("pass" if not missing else f"pass (confirmed {len(missing)})") if not left else f"fail ({len(left)}/{n})"
-        missing = left
-        detail += [f"not in OCR: {m}" for m in missing[:10]]
+        table, conf = base.split("vision/")[1], confirmed()
+        ok = [c for c in missing if conf.get((table, c[0], c[1]), (None,))[0] == c[2]]
+        unsure = sum(conf[(table, c[0], c[1])][1] for c in ok)
+        left = [c for c in missing if c not in ok]
+        if left:
+            res["ocr"] = f"fail ({len(left)}/{n})"
+        elif ok:
+            res["ocr"] = f"pass (confirmed {len(ok)}" + (f", {unsure} by an unsure second reader)" if unsure else ")")
+        else:
+            res["ocr"] = "pass"
+        detail += [f"not in OCR: line {ln} {col} = {v}" for ln, col, v in left[:10]]
 
     # Check: declared row sums
-    rs_fail = []
+    rs_fail, rs_done = [], 0
     for rule in meta.get("row_sums", []):
         for i, r in enumerate(rows):
             if rule.get("skip") and re.match(rule["skip"], next(iter(r.values()), "")):
@@ -328,10 +373,12 @@ def check_table(base, meta):
             tot = to_float(r.get(rule["total"], ""))
             if tot is None or any(p is None for p in parts):
                 continue
+            rs_done += 1
             if abs(sum(parts) - tot) > rule.get("tol", 0) + 1e-9:
                 rs_fail.append(f"row {i + 1}: {rule['parts']} sum {sum(parts)} != {rule['total']} {tot}")
     if meta.get("row_sums"):
-        res["row_sums"] = "pass" if not rs_fail else f"fail ({len(rs_fail)})"
+        # a rule that no row could be tested against (non-numeric cells) is not a pass
+        res["row_sums"] = ("pass" if rs_done else "n/a (0 rows testable)") if not rs_fail else f"fail ({len(rs_fail)})"
         detail += rs_fail[:10]
 
     # Check: declared column totals (per group)
@@ -373,7 +420,8 @@ def cmd_verify():
     for r in out:
         print(f"{r['status']:9} text={r['text_layer']:14} ocr={r['ocr']:10} ab={r['ab_agree']:10} rows={r['row_sums']:10} cols={r['col_totals']:10} {r['table'][-70:]}")
     print(f"{len(out)} tables: {sum(r['status'] == 'pass' for r in out)} pass, "
-          f"{sum(r['status'] == 'flag' for r in out)} flag, {sum(r['status'] == 'unchecked' for r in out)} unchecked")
+          f"{sum(r['status'] == 'flag' for r in out)} flag, {sum(r['status'] == 'pending' for r in out)} pending, "
+          f"{sum(r['status'] == 'unchecked' for r in out)} unchecked")
 
 
 if __name__ == "__main__":
