@@ -41,12 +41,23 @@ that started the repo).
 1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic
    error and 3 unresolvable blurry averages (see the plan's status lines). FOI LEX 55799 clean table:
    5,040 rows, every identity passes. Left: open the first PR to `main` once there is a `main` branch.
-2. **Internet Archive history: DSS done 8 October.** `R/wayback.R` (stages pages -> parse -> files -> size).
-   84 archived versions of DSS's old log (2014-2024) -> 234 FOI references, 972 linked files back to 2010-11
-   (`data/wayback/dss_entries.csv`). 160 already held from the live log; 670 recovered (990 MB, manifest
-   `data/manifest_dss_wayback.csv`, files `data/raw/dss_wayback/`); 142 listed but never archived (404).
-   Dates in the 2010-14 rows are dd/mm/yy. Next: (a) run the survey + pdfplumber + scanned pipeline over
-   the recovered files; (b) per-agency harvests where `data/wayback/sizing.csv` shows real history.
+2. **Internet Archive history: DSS recovered, triage NEXT (8 October).** `R/wayback.R` (pages -> parse ->
+   files -> size). 670 files recovered from the old DSS log (2010-11 to 2024; 990 MB; manifest
+   `data/manifest_dss_wayback.csv`). Survey (`scripts/survey.py` -> `data/survey/survey_dss_wayback.csv`):
+   555 scanned (6,886 pages), 17 with text tables -> 393 numeric tables via pdfplumber (done).
+   **Next: triage the 6,886 scanned pages.** Packed contact sheets are built: 431 sheets,
+   `data/extract/vision/scanned_wayback/packed_index.json` (tiles labelled "D017 p3" -> file and page).
+   Pilot on 20 first-batch sheets with known answers (`scanned_packtest/pilot_*.json`): Sonnet 5.5 caught
+   67/70 table pages with 1 false positive (134k tokens); Haiku 4.5 caught 66/70 but listed 81 non-tables
+   (93k). The `haiku` agent alias still resolved to 4.5 on 8 October, so Haiku 5.5 is untested: rerun the
+   same pilot first (it reports its model ID) and pick the model on false positives, which drive
+   transcription cost. Sonnet for all 431 sheets is about 2.3M tokens (not the 1.5M first quoted).
+   Free line-detection pre-filter (`scripts/table_filter.py`) tried: keeps 48% of pages and 162/170 table
+   pages on batch 1, but only ~14/22 on documents other than 55799, so not used for this batch.
+   Then: transcribe the triaged pages (strips + Sonnet + OCR checks, as batch 1).
+   Sizing for other agencies: `data/wayback/sizing.csv`; 11,108 foi-named PDFs archived across answered
+   domains (ANAO, DFAT, OAIC, IP Australia, AGD lead); 27 queries failed with archive 503/504 and are retried
+   on the next `Rscript R/wayback.R size`; the largest domains need CDX paging.
 3. **When the all-agency run finishes**: rerun the survey and pdfplumber over everything, count
    pages needing vision, then decide on the Claude API batch interface for scale (cost per page).
 4. **Back up extracted tables**: `data/extract/` to GitHub release assets (piggyback pattern).

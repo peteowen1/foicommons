@@ -21,7 +21,7 @@ Usage:
   python scripts/vision_tools.py pages  <pdf>                  # list pages likely holding tables
   python scripts/vision_tools.py render <pdf> <source> <ref> [pages, e.g. 1,2,5-9] [--dpi 110]
   python scripts/vision_tools.py strips <page_288.png> <out_dir>  # table area cut into zoomed strips
-  python scripts/vision_tools.py sheets                        # contact sheets of every scanned page (triage)
+  python scripts/vision_tools.py sheets [survey] [out folder]  # contact sheets of every scanned page (triage)
   python scripts/vision_tools.py verify                        # check every vision table, write report
 """
 import csv, json, os, re, subprocess, sys
@@ -62,12 +62,13 @@ def cmd_pages(pdf):
     print(json.dumps({"pdf": pdf, "table_pages": table_pages, "scanned_pages": scanned}))
 
 
-def cmd_sheets(survey=f"{ROOT}/survey/survey_docs.csv", dpi=36, per=16, cols=4):
+def cmd_sheets(survey=f"{ROOT}/survey/survey_docs.csv", dpi=36, per=16, cols=4, out_root=None):
     """Contact sheets for scanned documents: every page rendered small and tiled 4x4 with its page
     number, so a vision pass can pick out the table pages without opening 1,900 images.
     Writes data/extract/vision/scanned/sheets/*.png and scanned/sheets_index.json."""
     from PIL import Image, ImageDraw
-    out_dir = f"{VISION}/scanned/sheets"
+    out_root = out_root or f"{VISION}/scanned"   # a second batch gets its own folder so it never overwrites the first
+    out_dir = f"{out_root}/sheets"
     os.makedirs(out_dir, exist_ok=True)
     with open(survey, encoding="utf-8") as fh:
         docs = [d for d in csv.DictReader(fh) if d["class"] == "pdf: scanned/image only"]
@@ -110,9 +111,44 @@ def cmd_sheets(survey=f"{ROOT}/survey/survey_docs.csv", dpi=36, per=16, cols=4):
             sheet.save(f"{out_dir}/{name}")
             index.append({"sheet": f"{out_dir}/{name}", "source": d["source"], "reference": d["reference"],
                           "file": pdf, "pages": [pg for pg, _ in chunk], "title": d["title"]})
-    with open(f"{VISION}/scanned/sheets_index.json", "w", encoding="utf-8") as fh:
+    with open(f"{out_root}/sheets_index.json", "w", encoding="utf-8") as fh:
         json.dump(index, fh, indent=1)
     print(f"{len(docs)} documents, {sum(len(i['pages']) for i in index)} pages, {len(index)} sheets")
+
+
+def cmd_packed(index_json, out_root, per=16, cols=4):
+    """Repack contact sheets so pages from several documents share a sheet: one sheet per document wastes
+    most of each image on short files (808 sheets for 6,886 pages). Tiles are labelled "D017 p3"; the
+    packed index maps every tile back to its file and page. Reads the thumbnails cmd_sheets rendered."""
+    from PIL import Image, ImageDraw
+    entries = json.load(open(index_json, encoding="utf-8"))
+    docs, tiles = {}, []
+    for e in entries:
+        key = os.path.basename(e["sheet"])[: -len(".png")].split("__", 1)[1].rsplit("__", 1)[0]
+        thumb_dir = f"{ROOT}/pages/{e['source']}/{key}/thumb36"
+        thumbs = {int(re.search(r"-(\d+)\.png$", f).group(1)): f"{thumb_dir}/{f}" for f in os.listdir(thumb_dir) if f.endswith(".png")}
+        d = docs.setdefault(e["file"], f"D{len(docs) + 1:03d}")
+        tiles += [{"doc": d, "file": e["file"], "reference": e["reference"], "page": p, "thumb": thumbs[p]} for p in e["pages"]]
+    out_dir = f"{out_root}/packed"
+    os.makedirs(out_dir, exist_ok=True)
+    index = []
+    for s in range(0, len(tiles), per):
+        chunk = tiles[s:s + per]
+        ims = [Image.open(t["thumb"]) for t in chunk]
+        w, h = max(i.width for i in ims), max(i.height for i in ims)
+        sheet = Image.new("L", (cols * (w + 8), ((len(ims) + cols - 1) // cols) * (h + 26)), 255)
+        draw = ImageDraw.Draw(sheet)
+        for k, (t, im) in enumerate(zip(chunk, ims)):
+            x, y = (k % cols) * (w + 8), (k // cols) * (h + 26)
+            draw.text((x + 4, y + 4), f"{t['doc']} p{t['page']}", fill=0, font_size=18)
+            sheet.paste(im, (x, y + 24))
+            draw.rectangle([x, y + 24, x + im.width - 1, y + 24 + im.height - 1], outline=0)
+        path = f"{out_dir}/packed_{s // per + 1:04d}.png"
+        sheet.save(path)
+        index.append({"sheet": path, "tiles": [{k: t[k] for k in ("doc", "file", "reference", "page")} for t in chunk]})
+    with open(f"{out_root}/packed_index.json", "w", encoding="utf-8") as fh:
+        json.dump(index, fh, indent=1)
+    print(f"{len(docs)} documents, {len(tiles)} pages, {len(index)} packed sheets")
 
 
 def cmd_strips(png, out_dir, target=900, top_skip=200):
@@ -437,7 +473,9 @@ if __name__ == "__main__":
         cmd_render(args[1], args[2], args[3], args[4] if len(args) > 4 else "", dpi)
     elif args[0] == "strips":
         cmd_strips(args[1], args[2], top_skip=int(args[3]) if len(args) > 3 else 200)
-    elif args[0] == "sheets":
-        cmd_sheets()
+    elif args[0] == "packed":   # packed <sheets_index.json> <output folder>
+        cmd_packed(args[1], args[2])
+    elif args[0] == "sheets":   # sheets [survey csv] [output folder]
+        cmd_sheets(*(args[1:2] or [f"{ROOT}/survey/survey_docs.csv"]), out_root=args[2] if len(args) > 2 else None)
     elif args[0] == "verify":
         cmd_verify()
