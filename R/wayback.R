@@ -141,4 +141,39 @@ stage_files <- function() {
   manifest_summary(SRC)
 }
 
-if (stage == "pages") stage_pages() else if (stage == "parse") stage_parse() else if (stage == "files") stage_files() else stop("unknown stage: ", stage)
+# Sizing for every agency in the registry, before building per-agency harvests. Per log: distinct archived
+# versions of the log address. Per agency domain: archived PDFs with "foi" in the path (how DSS's old layout
+# showed up). One CDX query each at 3 s; one row written per query, so an interrupted run resumes.
+stage_size <- function() {
+  source(file.path(script_dir, "harvest_helpers.R")); hv_load_blocked()
+  reg <- read.csv(file.path(FC_DATA, "registry", "agencies.csv"), colClasses = "character", encoding = "UTF-8")
+  reg <- reg[nzchar(reg$disclosure_log_url), ]
+  out <- file.path(OUT_DIR, "sizing.csv")
+  # Rows that failed (server 5xx, timeouts: n is NA) are retried on the next run; only answered queries count as done
+  done <- if (file.exists(out)) with(read.csv(out, colClasses = "character"), key[!is.na(n) & n != "NA" & nzchar(n)]) else character()
+  add <- function(row) write.table(as.data.frame(row), out, sep = ",", row.names = FALSE, col.names = !file.exists(out),
+                                   append = file.exists(out), qmethod = "double", fileEncoding = "UTF-8")
+  strip <- function(u) sub("[?#].*$", "", sub("^https?://(www\\.)?", "", u))
+  jobs <- rbind(data.frame(kind = "log", agency = reg$agency, key = paste0("log:", strip(reg$disclosure_log_url)), q = strip(reg$disclosure_log_url)),
+                unique(data.frame(kind = "domain", agency = reg$agency, key = paste0("domain:", host_of(sub("^(https?://)?(www\\.)?", "https://", reg$disclosure_log_url))),
+                                  q = sub("^www\\.", "", host_of(reg$disclosure_log_url)))))
+  jobs <- jobs[!duplicated(jobs$key) & !jobs$key %in% done, ]
+  log_msg("[wayback size] %d queries to run", nrow(jobs))
+  for (i in seq_len(nrow(jobs))) {
+    j <- jobs[i, ]
+    p <- if (j$kind == "log") list(url = j$q, output = "json", fl = "timestamp", filter = "statuscode:200", collapse = "digest")
+         else list(url = j$q, matchType = "domain", output = "json", fl = "timestamp", filter = "statuscode:200",
+                   filter = "original:.*[Ff][Oo][Ii].*\\.[Pp][Dd][Ff].*", collapse = "urlkey", limit = "20000")
+    res <- tryCatch(cdx(p), error = function(e) e)
+    if (inherits(res, "error")) {
+      if (grepl("^CDX query failed \\((0|403|429)", conditionMessage(res))) { log_msg("[wayback size] stopping: %s", conditionMessage(res)); break }
+      add(list(key = j$key, kind = j$kind, agency = j$agency, n = NA, first = "", last = "", note = conditionMessage(res))); next
+    }
+    ts <- if (nrow(res)) sort(res$timestamp) else character()
+    add(list(key = j$key, kind = j$kind, agency = j$agency, n = length(ts), first = substr(ts[1] %||% "", 1, 8),
+             last = substr(ts[length(ts)] %||% "", 1, 8), note = if (length(ts) >= 20000) "hit the 20000 limit" else ""))
+    if (i %% 20 == 0) log_msg("[wayback size] %d of %d", i, nrow(jobs))
+  }
+}
+
+if (stage == "pages") stage_pages() else if (stage == "size") stage_size() else if (stage == "parse") stage_parse() else if (stage == "files") stage_files() else stop("unknown stage: ", stage)
