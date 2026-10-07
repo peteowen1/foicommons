@@ -41,9 +41,13 @@ that started the repo).
 1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic
    error and 3 unresolvable blurry averages (see the plan's status lines). FOI LEX 55799 clean table:
    5,040 rows, every identity passes. Left: open the first PR to `main` once there is a `main` branch.
-2. **Internet Archive history**: agencies drop documents after about 2 years (FOI 2122-068 is already
-   off the current DSS log). Use the Wayback CDX API for old snapshots of each log and their PDFs,
-   politely. Biggest source of missing history.
+2. **Internet Archive history: DSS running (started 23:49, 7 October)**. `R/wayback.R` (stages pages ->
+   parse -> files). 84 archived versions of DSS's old log (2014-2024) parsed: 234 FOI references, 966 linked
+   files back to 2010-11 (`data/wayback/dss_entries.csv`); 160 already held, 803 being fetched (~2 h, one
+   request per 3 s; manifest `data/manifest_dss_wayback.csv`, log `data/logs/wayback_dss.log`). Resume: same
+   detached launch as the harvest with `Rscript R/wayback.R files`. Don't edit `R/wayback.R` while it runs
+   (Rscript re-reads the file). Dates in the 2010-14 rows are dd/mm/yy. Then: extract tables from the new
+   files (survey + pdfplumber + scanned pipeline), and size the other 91 agencies with logs.
 3. **When the all-agency run finishes**: rerun the survey and pdfplumber over everything, count
    pages needing vision, then decide on the Claude API batch interface for scale (cost per page).
 4. **Back up extracted tables**: `data/extract/` to GitHub release assets (piggyback pattern).

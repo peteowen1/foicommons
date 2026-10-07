@@ -9,6 +9,17 @@ Checked 7 October 2026. User-Agent: `foicommons-archiver/0.1 (personal research 
 - Items found: 349 item-document rows across 16 pages (about 315 unique reference numbers; some items have several PDFs).
 - Oddities: other DSS logs exist and are NOT yet archived: `portfolio-agencies-freedom-information-disclosure-log` and `portfolio-ministers-freedom-information-disclosure-log`. The older known file `https://dss.gov.au/system/files/foi-attachments/foi-2122-068-document.pdf` returns a 301 from the bare domain and is not on the current log (older log pre-dates the card layout); not yet followed up. Some PDFs are very large (up to ~160 MB).
 
+- Internet Archive (checked 7 October 2026, CDX API, 5 queries 3s apart, project User-Agent; web.archive.org
+  has no robots.txt, it returns 404). The current log URL only exists from December 2024 (15 monthly
+  snapshots to October 2026), and its `/system/files/foi-attachments/` files were first captured in 2025 (29).
+  The history sits under DSS's OLD layout: log at `www.dss.gov.au/about-the-department/freedom-of-information/disclosure-log`
+  (captures from 2014; `?page=N` and per-financial-year views, e.g. `/disclosure-log-2014-15-financial-year`,
+  `?field_financial_year_tid=1286`), files under `/sites/default/files/documents/...`. 741 archived files
+  with "foi" in the path returned 200 (731 PDF), first captured 2014-2023, going back to FOI 11/12-034
+  (2012). About 154 match a filename we already hold, so roughly 587 are new. FOI 2122-068 is there:
+  `/sites/default/files/documents/foi/02_2022/foi-2122-068-document.pdf`, captured 4 July 2022.
+  The 741 is a floor: files whose path lacks "foi" were not counted.
+
 ## 2. Services Australia disclosure log
 - URL: https://www.servicesaustralia.gov.au/freedom-information-disclosure-log (single page, one table).
 - robots.txt: `Crawl-delay: 10`, which we obey (one request per 10 seconds). Disallows `/search/`, `/admin/`, `/minister/`, `/sites/default/files/job-packs/` etc. The log and `/sites/default/files/` documents are allowed. No terms page about automated access found.
