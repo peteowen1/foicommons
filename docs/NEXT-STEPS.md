@@ -49,9 +49,17 @@ that started the repo).
    `data/extract/vision/scanned_wayback/packed_index.json` (tiles labelled "D017 p3" -> file and page).
    Pilot on 20 first-batch sheets with known answers (`scanned_packtest/pilot_*.json`): Sonnet 5.5 caught
    67/70 table pages with 1 false positive (134k tokens); Haiku 4.5 caught 66/70 but listed 81 non-tables
-   (93k). The `haiku` agent alias still resolved to 4.5 on 8 October, so Haiku 5.5 is untested: rerun the
-   same pilot first (it reports its model ID) and pick the model on false positives, which drive
-   transcription cost. Sonnet for all 431 sheets is about 2.3M tokens (not the 1.5M first quoted).
+   (93k). Rerun 8 October with the identical prompt on `claude-haiku-5-5` (confirmed in its report):
+   69/70 with 1 false positive (147k tokens; `pilot_haiku55.json`). **Use Haiku 5.5 for the full triage.**
+   Its only miss is D018 p21; the one false positive (D019 p1) is the same page Sonnet flagged, so the
+   answer key may be wrong there (not checked).
+   **Full triage done 8 October** (10 Haiku 5.5 agents, ~2.4M tokens; batch 03 wrote its file but never
+   reported its model ID). `scripts/merge_triage.py` -> `scanned_wayback/triage.json`: 699 of 6,886
+   pages flagged (330 stats, 252 charts, 117 maybe) in 139 documents. Copies of the same document
+   dropped (12/13-065 re-released four 12/13-073 docs; D550 = D158): **322 stats pages in 112 documents
+   to transcribe** (`to_transcribe.json`). Invoices and fee schedules are kept (batches disagreed;
+   filter by title after transcription if unwanted). Charts wait for item 6; the 117 maybes need a
+   full-size look. Batch 08's stats include research regression tables (DSP/SCV annexes): decide.
    Free line-detection pre-filter (`scripts/table_filter.py`) tried: keeps 48% of pages and 162/170 table
    pages on batch 1, but only ~14/22 on documents other than 55799, so not used for this batch.
    Then: transcribe the triaged pages (strips + Sonnet + OCR checks, as batch 1).
