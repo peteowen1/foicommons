@@ -27,6 +27,7 @@ cdx <- function(params) {
 raw_url <- function(ts, original) sprintf("https://web.archive.org/web/%sid_/%s", ts, original)
 
 stage_pages <- function() {
+  source(file.path(script_dir, "harvest_helpers.R")); hv_load_blocked()   # respect hosts blocked in earlier runs
   q <- function(url) cdx(list(url = url, matchType = "prefix", output = "json", fl = "original,timestamp,digest,statuscode,mimetype",
                               filter = "statuscode:200", filter = "mimetype:text/html", collapse = "digest"))
   # The log itself, plus the per-year logs for 2010-11 and 2011-12, which sat at the site root
@@ -58,11 +59,15 @@ stage_parse <- function() {
     page <- read_html(f)
     for (tr in html_elements(page, "table tr")) {
       tds <- html_elements(tr, "td")
-      if (length(tds) < 3) next
+      if (length(tds) == 0) next
       n_rows <- n_rows + 1
       txt <- squish(html_text2(tds))
-      dt <- html_attr(html_element(tds[2], "time"), "datetime")
-      if (nzchar(txt[1])) {
+      # 2017-2018 captures put each file link on its own one-cell row under the FOI row: such a short row
+      # continues the current entry (its only text is the link text, so it must not start a new reference)
+      short <- length(tds) < 3
+      if (short && !exists("cur", inherits = FALSE)) next
+      dt <- if (short) NA else html_attr(html_element(tds[2], "time"), "datetime")
+      if (!short && nzchar(txt[1])) {
         cur <- list(reference = txt[1], date = if (!is.na(dt)) dt else txt[2], request = txt[3],
                     description = if (length(txt) >= 5) txt[5] else "")
       } else if (!exists("cur", inherits = FALSE)) next
@@ -70,7 +75,7 @@ stage_parse <- function() {
         href <- html_attr(a, "href") %||% ""
         if (!grepl(FILE_RX, href, ignore.case = TRUE)) next
         out[[length(out) + 1]] <- data.frame(snapshot = ts, page = basename(f), reference = cur$reference, date = cur$date,
-          request = cur$request, description = if (nzchar(txt[1])) cur$description else txt[length(txt)],
+          request = cur$request, description = if (!short && nzchar(txt[1])) cur$description else txt[length(txt)],
           doc_url = url_absolute(href, "https://www.dss.gov.au/"), link_text = squish(html_text2(a)))
       }
     }
@@ -112,6 +117,11 @@ stage_files <- function() {
     dest <- file.path(FC_ROOT, rel)
     r <- hv_get(raw_url(sub("^(\\d{14}).*", "\\1", x$first_seen), x$doc_url), dest, kind = "doc")
     if (r$status == 0L) { log_msg("[wayback dss] stopped: %s", r$note); break }
+    if (r$status %in% c(403, 429)) {   # project rule: on 403/429, record it and stop the source
+      append_manifest(SRC, list(source = SRC, reference = x$reference, doc_url = x$doc_url, http_status = r$status,
+                                fetched_at = format(Sys.time(), tz = "UTC"), note = paste("stopped:", r$note)))
+      log_msg("[wayback dss] %s from web.archive.org: stopping", r$status); break
+    }
     item <- list(source = SRC, reference = x$reference, title = x$request, release_date = x$date, doc_url = x$doc_url,
                  doc_title = x$link_text, detail_text = x$description, agency = "Department of Social Services",
                  listing_url = "https://www.dss.gov.au/about-the-department/freedom-of-information/disclosure-log",
