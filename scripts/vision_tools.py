@@ -315,8 +315,13 @@ def ocr_missing(meta, rows):
                     if re.fullmatch(r"\d{1,3}\.\d{3}", t):   # OCR reads a thousands comma as a full stop
                         tokens.add(t.replace(".", ""))
 
+    def dezero(t):   # 396.40 and 396.4 are the same number: a transcriber dropping a printed trailing zero is not a misreading
+        return t.rstrip("0").rstrip(".") if "." in t else t
+
+    tokens |= {dezero(t) for t in tokens}
+
     def seen(v):
-        if v in tokens:
+        if v in tokens or dezero(v) in tokens:
             return True
         # OCR swaps separators (22,356.73 -> "22.356.73"): accept the same digits only where the decimal point
         # can sit in the same place, so 67.2 never matches "672" or "6.72"
@@ -423,7 +428,12 @@ def check_table(base, meta):
         for grp, printed in rule["totals"].items():
             sel = [r for r in rows if rule.get("group_by") is None or r.get(rule["group_by"]) == grp]
             s = sum(v for v in (to_float(r.get(rule["col"], "")) for r in sel) if v is not None)
-            if abs(s - float(printed)) > rule.get("tol", 0) + 1e-9:
+            # a printed total like "< 0.1" can't be summed against; say so instead of crashing every
+            # agent's verify run (8 October 2026)
+            if to_float(str(printed)) is None:
+                detail.append(f"{rule['col']} {grp}: printed total {printed!r} is not a number, not checked")
+                continue
+            if abs(s - to_float(str(printed))) > rule.get("tol", 0) + 1e-9:
                 ct_fail.append(f"{rule['col']} {grp}: sum {round(s, 6)} != printed {printed}")
     if meta.get("col_totals"):
         res["col_totals"] = "pass" if not ct_fail else f"fail ({len(ct_fail)})"
@@ -440,6 +450,9 @@ def check_table(base, meta):
 
 
 def cmd_verify():
+    # Some meta files carry repo-relative OCR paths; agents run verify from other folders, which made
+    # those read as "pending" (8 October 2026). Resolve everything from the repo root.
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     out = []
     for dirpath, _, files in os.walk(VISION):
         for f in sorted(files):

@@ -60,6 +60,22 @@ that started the repo).
    to transcribe** (`to_transcribe.json`). Invoices and fee schedules are kept (batches disagreed;
    filter by title after transcription if unwanted). Charts wait for item 6; the 117 maybes need a
    full-size look. Batch 08's stats include research regression tables (DSP/SCV annexes): decide.
+   **Transcription in progress (8 October).** Pete: research/regression tables out for now, later sweep
+   (D520 and 2 maybes tagged `out_of_scope` in triage.json; agents log others to `scanned_wayback/skipped/`).
+   Maybes checked full size by Haiku 5.5: 25 more stats pages -> 324 pages, 54 batches of 6
+   (`scanned_wayback/batches/`, brief `scanned_wayback/BRIEF.md`, Sonnet 5.5, ~20k tokens/page).
+   Pages prepared with `python -P scripts/ocr_pages.py queue|ocr|strips data/extract/vision/scanned_wayback`.
+   **All 55 batches done 8 October: 556 tables, 387 pass verify, 169 flagged (~6.3M Sonnet tokens).**
+   `python -P scripts/sort_flags.py dss_wayback` -> `dss_wayback/flag_sort.csv` groups the flags: 40 OCR misses
+   confirmed by printed totals, 16 text-layer false alarms (12/13-044 slides), 3 rounding, 61 OCR-only (278 cells,
+   nothing to sum against), 49 sum gaps (28 are the 12/13-037 quirk: printed totals omit Family Supplement).
+   Loose agent tolerances were tightened to the smallest passing value. 5 research tables in `skipped/`.
+   After all: one blind re-read round for flags (as batch 1), set
+   rounding tol on wave-1 tables, mark `10/11-015 doc7 p13` a copy of doc5 p11, look at
+   `10/11-015 doc4 p10` (total 1,105,715 vs rows 1,817,917) and `10/11-041 document5` (sideways, totals short), `11_12-044__52 p17` (fitted cell reverted, sum flagged),
+   `12_13-044 Document_2008 p41` (tiny digits, OCR matched 2/70), `p35` (total 1,819 off), `12_13-007 doc_72 p17`
+   (possible Chair row lost at a strip cut). Text-layer-only flags on 12/13-044 slides are false alarms (embedded
+   text lacks the numbers; OCR passes): handle as a group.
    Free line-detection pre-filter (`scripts/table_filter.py`) tried: keeps 48% of pages and 162/170 table
    pages on batch 1, but only ~14/22 on documents other than 55799, so not used for this batch.
    Then: transcribe the triaged pages (strips + Sonnet + OCR checks, as batch 1).

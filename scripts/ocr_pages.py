@@ -3,6 +3,9 @@ against an independent reading of the page instead of a second model transcripti
 
   python -P scripts/ocr_pages.py queue   # merge triage_out_*.json into scanned/queue.json, render pages
   python -P scripts/ocr_pages.py ocr     # OCR every queued page; resumable, one JSON written per page
+  python -P scripts/ocr_pages.py strips  # zoomed strips per page (run after ocr: sideways pages are found from it)
+An optional last argument names another batch folder (e.g. data/extract/vision/scanned_wayback),
+whose to_transcribe.json (scripts/merge_triage.py) replaces the triage_out_*.json files.
 
 Per page:
   data/pages/<source>/<key>/p0001.png                   144 dpi (native scan resolution) for transcription
@@ -15,7 +18,7 @@ import json, os, subprocess, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from vision_tools import ROOT, VISION
 
-SCANNED = f"{VISION}/scanned"
+SCANNED = sys.argv[2].replace("\\", "/").rstrip("/") if len(sys.argv) > 2 else f"{VISION}/scanned"
 # Triage results set aside after review (7 October 2026): charts without data labels, contract
 # pricing and rule lookup tables are not statistics.
 EXCLUDE = {("17/18-079", 2), ("17/18-079", 3), ("17/18-131", 10), ("17/18-131", 25), ("17/18-131", 36),
@@ -34,8 +37,11 @@ def doc_keys():
 def cmd_queue():
     keys = doc_keys()
     pages = []
-    for i in (1, 2, 3):
-        pages += json.load(open(f"{SCANNED}/triage_out_{i}.json", encoding="utf-8"))
+    if os.path.exists(f"{SCANNED}/to_transcribe.json"):
+        pages = json.load(open(f"{SCANNED}/to_transcribe.json", encoding="utf-8"))
+    else:
+        for i in (1, 2, 3):
+            pages += json.load(open(f"{SCANNED}/triage_out_{i}.json", encoding="utf-8"))
     q = []
     for p in pages:
         if p["kind"] == "chart" or (p["reference"], p["page"]) in EXCLUDE:
@@ -80,12 +86,32 @@ def cmd_ocr():
         print(f"{n}/{len(todo)} {e['reference']} p{e['page']}: {len(res or [])} boxes, {time.time() - t0:.0f}s", flush=True)
 
 
+def sideways(ocr_json):
+    """True when most OCR text boxes are taller than wide: the page's text runs sideways, so
+    horizontal strips would cut the table across its columns. For triage files with no rotated flag."""
+    boxes = json.load(open(ocr_json, encoding="utf-8")) if os.path.exists(ocr_json) else []
+    long = [b for b, s, c in boxes if len(s) >= 4]
+    if len(long) < 5:
+        return False
+    tall = sum((max(y for _, y in b) - min(y for _, y in b)) > (max(x for x, _ in b) - min(x for x, _ in b)) for b in long)
+    return tall > len(long) / 2
+
+
 def cmd_strips():
     """Zoomed table strips for every queued page (vision_tools strips). Pages whose table is turned
     sideways are left whole: horizontal strips would slice the table across its columns."""
     from vision_tools import cmd_strips as strips
     q = json.load(open(f"{SCANNED}/queue.json", encoding="utf-8"))
     for e in q:
+        if "rotated" not in e and not os.path.exists(e["ocr"]):
+            # sideways() reads the OCR: run before it, it silently says "upright" and the page is cut across
+            # its columns (8 pages of the 8 October batch). Leave the page for a later run instead.
+            e["strips"] = []
+            continue
+        if "rotated" not in e:   # batch 1 flagged landscape pages by hand: sent whole, never stripped
+            from PIL import Image
+            w, h = Image.open(e["image"]).size
+            e["rotated"] = w > h or sideways(e["ocr"])
         if e["rotated"] and e["reference"] != "FOI LEX 55799":   # 55799 "rotated" means landscape, table upright
             e["strips"] = [e["image"]]
             continue

@@ -21,7 +21,14 @@ DUPLICATE_OF = {
     "D550": "D158",  # byte-identical file, 12/13-006
 }
 
+# Left out of transcription for now (Pete, 8 October 2026). Kept in triage.json so a later sweep can
+# pick them up: grep for "out_of_scope".
+OUT_OF_SCOPE = {
+    "D520": "research regression tables (UK disability benefit study), no printed totals to check against",
+}
+
 root = sys.argv[1]
+source_of = {e["file"]: e["source"] for e in json.load(open(os.path.join(root, "sheets_index.json")))}
 tdir = os.path.join(root, "triage")
 merged, problems = [], []
 for inp in sorted(glob.glob(os.path.join(tdir, "in_*.json"))):
@@ -38,7 +45,20 @@ for inp in sorted(glob.glob(os.path.join(tdir, "in_*.json"))):
             continue
         if r["kind"] not in ("stats", "chart", "maybe"):
             problems.append(f"batch {n}: {r['doc']} p{r['page']} unknown kind {r['kind']!r}")
-        merged.append({**t, "kind": r["kind"], "batch": n})
+        merged.append({**t, "source": source_of[t["file"]], "kind": r["kind"], "batch": n})
+
+# Pages the thumbnail pass called "maybe" were looked at full size (triage/maybe_out_*.json): the
+# full-size verdict replaces "maybe"; "research" pages are set aside with D520, "none" are dropped.
+review = {}
+for f in glob.glob(os.path.join(tdir, "maybe_out_*.json")):
+    for r in json.load(open(f)):
+        review[(r["doc"], int(r["page"]))] = r
+for r in merged:
+    v = review.get((r["doc"], r["page"]))
+    if r["kind"] == "maybe" and v:
+        r["kind"], r["full_size_note"] = v["kind"], v.get("note", "")
+        if v["kind"] == "research":
+            r["out_of_scope"] = "research regression tables, found on the full-size check"
 
 keys = [(r["doc"], r["page"]) for r in merged]
 dupes = [k for k, c in collections.Counter(keys).items() if c > 1]
@@ -46,13 +66,16 @@ merged.sort(key=lambda r: (r["doc"], r["page"]))
 for r in merged:
     if r["doc"] in DUPLICATE_OF:
         r["duplicate_of"] = DUPLICATE_OF[r["doc"]]
+    if r["doc"] in OUT_OF_SCOPE:
+        r["out_of_scope"] = OUT_OF_SCOPE[r["doc"]]
 json.dump(merged, open(os.path.join(root, "triage.json"), "w"), indent=1)
-todo = [r for r in merged if r["kind"] == "stats" and "duplicate_of" not in r]
+todo = [r for r in merged if r["kind"] == "stats" and "duplicate_of" not in r and "out_of_scope" not in r]
 json.dump(todo, open(os.path.join(root, "to_transcribe.json"), "w"), indent=1)
 
 print(f"pages listed: {len(merged)}  by kind: {dict(collections.Counter(r['kind'] for r in merged))}")
 print(f"documents with a listed page: {len({r['doc'] for r in merged})}  duplicates: {len(dupes)}")
 print(f"stats pages to transcribe: {len(todo)} in {len({r['doc'] for r in todo})} documents "
-      f"({sum('duplicate_of' in r for r in merged if r['kind'] == 'stats')} stats pages dropped as copies)")
+      f"({sum('duplicate_of' in r for r in merged if r['kind'] == 'stats')} stats pages dropped as copies, "
+      f"{sum('out_of_scope' in r for r in merged if r['kind'] == 'stats')} set aside as out of scope)")
 for p in problems:
     print("PROBLEM:", p)
