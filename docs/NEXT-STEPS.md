@@ -41,7 +41,8 @@ extraction session).
   registry.** Discovery kept links to OTHER agencies' logs: ANAO -> PMC, Treasury, Infrastructure; ARENA ->
   DCCEEW; DTA -> a pre-production site. `R/build_registry.R` now drops logs on another host (allowlist:
   cer.gov.au, nzea.gov.au, publichospitalfunding.gov.au, webarchive.nla.gov.au); slugs unchanged. Still to do:
-  (1) find ANAO's own disclosure log by hand (its row is now `foreign_logs_only`); (2) the duplicate downloads
+  ANAO has no log of its own (searched 8 October; likely FOI-exempt, unverified; `docs/sources.md`), so its
+  `foreign_logs_only` row is correct. Left: the duplicate downloads
   already on disk stay (2,517 of 12,980 surveyed files): dedupe by sha256 in every count and before extraction.
 
 ## Queue (ranked)

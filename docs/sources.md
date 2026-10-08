@@ -60,3 +60,12 @@ Tested with small caps on AFP, ASIC, ATSB (2025-26 page), ARC, APRA and the DSS 
 
 ## Known limits
 JavaScript-rendered logs are not handled (they show up as pages with no items). Detail pages are followed one level only. Search-form-only logs and logs behind blocked hosts are missing. Discovery picks the first FOI page it finds and can pick a wrong page.
+
+## Australian National Audit Office (checked 8 October 2026)
+
+No disclosure log found, and probably none exists. robots.txt allows the site (no crawl-delay). Homepage,
+`/about`, `/about/accountability-and-reporting` and four guessed FOI paths (all 404) show no FOI page; the
+only FOI link is the performance audit "Administration of the Freedom of Information Act 1982 by Selected
+Entities" (Report No. 32 of 2025-26), which links to the PMC, Treasury and Infrastructure logs. Discovery
+took those as ANAO's own (fixed in `R/build_registry.R`, `d203ba5`). Search summaries say the Auditor-General
+and ANAO are exempt from the FOI Act: UNVERIFIED against the Act text (Schedule 2).
