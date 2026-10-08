@@ -75,7 +75,8 @@ that started the repo).
    added to `vision/confirmations.csv`. Verify: 719 of 896 tables pass. `11_12-044__52 p17` Grants Unexpended
    resolved by Pete: (83,065) as printed; the total not reconciling is the source. The 6 cells in tables split across
    pages 5-6 (12/13-037 foi_20037-3 p5 t4, t12) were re-read with both pages: all agree.
-   page the table spans, or the reader answers a different row.
+   Lesson: a blind item must name the row by all its text cells and include every page the table spans,
+   or the reader answers a different row.
    After all: one blind re-read round for flags (as batch 1), set
    rounding tol on wave-1 tables, mark `10/11-015 doc7 p13` a copy of doc5 p11, look at
    `10/11-015 doc4 p10` (total 1,105,715 vs rows 1,817,917) and `10/11-041 document5` (sideways, totals short), `11_12-044__52 p17` (fitted cell reverted, sum flagged),
