@@ -268,12 +268,14 @@ def pdfplumber_facts():
         data = grid[h:]
         rows = [dict(zip(names, r)) for r in data]
         cs = [{"position": j + 1, "column": n, **describe_column(n, [r[j] for r in data])} for j, n in enumerate(names)]
-        meta = {"title": " ".join(grid[0])[:200] if h else "", "units": "", "check_status": "text layer (no check)",
+        cap = t.get("caption", "")
+        meta = {"title": cap or (" ".join(grid[0])[:200] if h else ""), "units": "", "check_status": "text layer (no check)",
                 "layout": "labelled" if h else "context needed"}
         facts = [f for f in emit(t["table_id"], meta, cs, rows) if f["flag"] != "blank"]   # empty grid cells are not printed values
         for f in facts:
             if f["measure"] == "unknown":
-                f["layout"] = "context needed"
+                # a printed "Table N: ..." title says what the table is, though not what each column measures
+                f["layout"] = "captioned" if cap else "context needed"
         for f in facts:
             f["csv_line"] = int(f["csv_line"]) + h - 1   # emit counts from the first data row as line 2
         out += facts

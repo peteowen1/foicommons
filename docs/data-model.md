@@ -98,6 +98,7 @@ Survey source: `data/survey/survey_phase1.csv`, `survey_agencies.csv`, `survey_d
 | title | vision: printed title or a description; pdfplumber: the first row, often data rather than a title |
 | units | vision only: what the numbers are |
 | n_rows, n_cols | data rows (header excluded), columns |
+| caption | text-layer tables: a printed "Table N: ..." line found just above the table, else blank |
 | check_status | vision: `pass` / `flag` from `vision_tools.py verify` (why: `data/extract/vision/<batch>/flag_sort.csv`); pdfplumber: `text layer (no check)` |
 | csv_path | the table, repo-relative |
 
@@ -149,13 +150,16 @@ in `CLEAN` in build_facts.py) contribute facts from the clean table instead of t
 | unit | `%` for percentages, otherwise from the table's units |
 | kind | `reported` or `modelled` (worked examples, projections, policy scenarios) |
 | check_status | the table's checker status: are the DIGITS right |
-| layout | is the MEANING known: `checked` (vision table with printed title and units), `labelled` (text-layer table, header found, measure known), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
+| layout | is the MEANING known: `checked` (vision table with printed title and units), `labelled` (text-layer table, header found, measure known), `captioned` (a printed "Table N: ..." title says what the table is, but not what each column measures), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
 
 State on 8 October 2026: 167,855 facts from 2,540 tables. Vision: 62,411 from 886 tables (`checked`).
 pdfplumber: 1,662 of 7,506 text-layer tables kept (3+ rows, 2+ columns, 30%+ numeric; the rest are
 fragments), header = leading rows that are mostly text or years (up to 3, merged per column); 17,380 facts
-`labelled`, 88,064 `context needed`. Next free step: save each table's position and take the text just
-above it as its caption. Known gaps: 21,555
+`labelled`, 88,064 `context needed`. Captions (`scripts/table_captions.py`, the text just above each
+table) were tried the same day: only 118 of 1,654 are real "Table N" titles; the rest is page furniture
+("Commercial-in-confidence 33", "Page 107"), prose or the previous table's numbers. 73 tables moved to
+`captioned`; 85,826 facts in 1,226 tables stay `context needed`. The free route is used up: naming those
+needs a model reading the page (one Haiku pass after the harvest, with the measure tidy). Known gaps: 21,555
 facts have no period, mostly 109 FOI LEX 55799 tables outside the clean table (month is in the page header)
 and the 12/13-037 policy scenarios (no period by nature); `measure` wording varies table to table.
 

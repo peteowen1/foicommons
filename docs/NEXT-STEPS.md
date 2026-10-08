@@ -51,10 +51,11 @@ extraction session).
   Rebuild after each harvest, survey or extraction run, then `python -P scripts/build_facts.py`: `facts` is one
   row per number with its breakdowns (rules agreed with Pete on real tables, 8 October). 62,411 facts from 886
   vision tables. Open items, in order:
-  1. pdfplumber tables (7,506, text layer, no independent check) are not in `facts` yet; their first row is
-     often data, so header detection comes first.
-  2. 82 of 731 tables have measure names found in neither title nor units: one Haiku tidy pass over
-     everything still unclear AFTER the harvest is extracted (Pete, 8 October: one pass, not two).
+  1. Done 8 October: pdfplumber tables are in `facts` (1,662 kept of 7,506; `layout` says how far their
+     meaning is known).
+  2. One Haiku pass AFTER the harvest is extracted (Pete, 8 October: one pass, not two), covering: 82 vision
+     tables with unclear measure names, and 1,226 text-layer tables (85,826 facts) marked `context needed`,
+     whose title and headings sit outside the grid (free captions recovered only 73 tables).
   3. 109 FOI LEX 55799 tables outside the clean table have no month (it is in the page header).
   4. Needs Pete: Director of National Parks shares DCCEEW's log, so 785 documents count under both agencies
      in per-agency totals. Recommendation: fold Parks into DCCEEW for counting.

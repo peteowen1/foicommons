@@ -237,13 +237,18 @@ def main():
 
     # ---- tables: pdfplumber index + vision meta files, one list ----
     verify = {rel(r["table"]): r for r in read(f"{DATA}/extract/vision/verify_report.csv")}
+    # text above each text-layer table (scripts/table_captions.py); only "Table N: ..." style lines count as a
+    # caption here, the rest is usually page furniture
+    capf = f"{DATA}/extract/table_captions.csv"
+    captions = {r["csv_path"]: r["caption"] for r in read(capf) if r["status"] == "ok"
+                and re.match(r"^\s*(table|figure|chart)\s*[a-z]?\d", r["caption"], re.I)} if os.path.exists(capf) else {}
     tables = []
     for r in read(f"{DATA}/extract/tables_index.csv"):
         d = by_path.get(rel(r["file"]))
         tables.append({"table_id": short_id(rel(r["csv_path"])), "doc_id": d or "", "method": "pdfplumber",
             "pages": r["page"], "table_n": r["table_n"], "title": r["header"][:200], "units": "",
             "n_rows": r["n_rows"], "n_cols": r["n_cols"], "check_status": "text layer (no check)",
-            "csv_path": rel(r["csv_path"])})
+            "caption": captions.get(rel(r["csv_path"]), ""), "csv_path": rel(r["csv_path"])})
     for mfile in glob.glob(f"{DATA}/extract/vision/**/*.meta.json", recursive=True):
         meta = json.load(open(mfile, encoding="utf-8"))
         base = rel(mfile[: -len(".meta.json")])
@@ -324,7 +329,7 @@ def main():
     write("requests", list(requests.values()), ["request_id", "log_slug", "foi_reference", "title", "release_date", "release_date_iso", "decision", "n_documents"])
     write("document_sources", sources, ["request_id", "doc_id", "log_slug", "local_path", "doc_url", "bytes"])
     write("documents", list(documents.values()), ["doc_id", "ext", "bytes", "pages", "scanned_pages", "text_table_lines", "class", "n_tables", "n_sources", "example_path"])
-    write("tables", tables, ["table_id", "doc_id", "method", "pages", "table_n", "title", "units", "n_rows", "n_cols", "check_status", "csv_path"])
+    write("tables", tables, ["table_id", "doc_id", "method", "pages", "table_n", "title", "caption", "units", "n_rows", "n_cols", "check_status", "csv_path"])
     write("columns", columns, ["table_id", "position", "column", "type", "filled_share", "numeric_share", "example", "dimension", "year_in_name"])
     write("series", series, ["series_id", "agency_slug", "title_key", "table_id", "doc_id", "title", "n_tables", "n_documents", "confidence"])
 
