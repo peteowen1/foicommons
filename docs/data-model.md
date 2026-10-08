@@ -148,9 +148,14 @@ in `CLEAN` in build_facts.py) contribute facts from the clean table instead of t
 | flag | `nil` (printed -), `blank`, `redacted`, `not published`, `below threshold` (<5, <1%), `text` |
 | unit | `%` for percentages, otherwise from the table's units |
 | kind | `reported` or `modelled` (worked examples, projections, policy scenarios) |
-| check_status | the table's checker status |
+| check_status | the table's checker status: are the DIGITS right |
+| layout | is the MEANING known: `checked` (vision table with printed title and units), `labelled` (text-layer table, header found, measure known), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
 
-State on 8 October 2026: 62,411 facts from 886 of 896 vision tables; 57,640 with a value. Known gaps: 21,555
+State on 8 October 2026: 167,855 facts from 2,540 tables. Vision: 62,411 from 886 tables (`checked`).
+pdfplumber: 1,662 of 7,506 text-layer tables kept (3+ rows, 2+ columns, 30%+ numeric; the rest are
+fragments), header = leading rows that are mostly text or years (up to 3, merged per column); 17,380 facts
+`labelled`, 88,064 `context needed`. Next free step: save each table's position and take the text just
+above it as its caption. Known gaps: 21,555
 facts have no period, mostly 109 FOI LEX 55799 tables outside the clean table (month is in the page header)
 and the 12/13-037 policy scenarios (no period by nature); `measure` wording varies table to table.
 

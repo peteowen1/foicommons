@@ -118,6 +118,8 @@ GENERIC = {"", "measure", "value", "amount", "total", "number", "count", "pct", 
 def measure_from_units(units):
     """The measure when the column name does not carry one: from the table's units ("number of recipients
     (rounded to 5); ..." -> "recipients", "$ million (...)" -> "amount")."""
+    if not (units or "").strip():
+        return "unknown"   # no units and no measure in the column name: say so rather than guess
     u = re.split(r"[;(]", units or "")[0].strip().lower()
     u = re.sub(r"^(the\s+)?(number|count|no\.?)\s+of\s+", "", u)
     if not u or re.match(r"^\$|^(a)?\$|dollars|^\$?'?000|million|^aud", u):
@@ -132,6 +134,152 @@ def measure_of(rest):
              {"no", "num", "number", "count", "pct", "of", "total", "change", "share", "percent", "value", "amount",
               "fy", "y", "yr", "and"}]
     return " ".join(words)
+
+
+def emit(tid, t, cs, rows):
+    """Facts for one table: cs = column descriptions (build_catalogue.describe_column), rows = dicts."""
+    out = []
+    if not cs:
+        return out
+    # a label column holds text; a column that is all nil ("-") is an empty VALUE column, not a label
+    label = [c for c in cs if c["dimension"] or (c["type"] == "label" and float(c["filled_share"] or 0) > 0)]
+    value = [c for c in cs if c not in label]
+    if not label and value:          # no label column: the first column names the rows
+        label, value = [value[0]], value[1:]
+    tp, tpt = period_in_title(t["title"])
+    modelled = bool(MODELLED.search(t["title"] + " " + t["units"]))
+    unit_default = t["units"].split(";")[0].split("(")[0].strip()[:60]
+    for i, row in enumerate(rows, start=2):
+        dims = {"geography": "", "geography_type": "", "category": "", "category_type": "", "other_dims": ""}
+        row_period, row_ptype = "", ""
+        other = []
+        for c in label:
+            v = (row.get(c["column"]) or "").strip()
+            d = c["dimension"]
+            if d in GEO and not dims["geography"]:
+                dims["geography"], dims["geography_type"] = v, d
+            elif d in PERIOD and not row_period:
+                row_period, row_ptype = (fy(v) or v), d
+            elif not dims["category"]:
+                # a column the agents called payment / payment_name / payment_type is the shared payment_type
+                ct = d if d in SHARED else ("payment_type" if re.fullmatch(r"payment(_name|_type)?", c["column"].lower()) else c["column"])
+                dims["category"], dims["category_type"] = v, ct
+            elif v:
+                other.append(f"{d if d in SHARED else c['column']}={v}")
+        dims["other_dims"] = "; ".join(other)
+        row_label = " ".join((row.get(c["column"]) or "") for c in label).lower()
+        for c in value:
+            raw = row.get(c["column"]) or ""
+            val, flag = parse_value(raw)
+            p, pt, rest = period_in_name(c["column"])
+            stat, unit, derived = stat_of(c["column"])
+            if p:
+                period, ptype, pfrom = p, pt, "column name"
+            elif row_period:
+                period, ptype, pfrom = row_period, row_ptype, "row label"
+            elif tp:
+                period, ptype, pfrom = tp, tpt, "title"
+            else:
+                period, ptype, pfrom = "", "", ""
+            if stat == "pct change" and not p and re.findall(FY, t["title"]):
+                period, ptype, pfrom = " to ".join(fy(x) for x in re.findall(FY, t["title"])[:2]), "change", "title"
+            scen = re.search(r"((?:19|20)\d\d)_?system|system_((?:19|20)\d\d)", c["column"].lower())
+            cat, cat_type = dims["category"], dims["category_type"]
+            extra = dims["other_dims"]
+            measure = "amount" if scen else measure_of(rest)
+            if not scen and PAYMENT_COL.search(c["column"]) and cat_type != "payment_type":
+                # the column is a payment (austudy, youth_allowance_total): a breakdown, not the measure
+                if cat:
+                    extra = "; ".join(x for x in (f"{cat_type}={cat}", extra) if x)
+                cat, cat_type = c["column"], "payment_type"
+                measure = ""
+            if measure in GENERIC or re.fullmatch(r"[\d\s]+|col \d+", measure or ""):
+                measure = measure_from_units(t["units"])
+            if scen:   # 12/13-037 style: the column is a policy scenario, not a period
+                other_s = f"scenario={(scen.group(1) or scen.group(2))} system"
+            else:
+                other_s = ""
+            out.append({
+                "fact_id": f"{tid}:{i}:{c['position']}", "table_id": tid, "csv_line": i, "column": c["column"],
+                "measure": measure, "stat": stat,
+                "derived": "yes" if derived else "",
+                "is_total": "yes" if re.search(r"\btotal\b", row_label) or re.search(r"(^|_)total($|_)", c["column"].lower()) else "",
+                "period": period, "period_type": ptype, "period_from": pfrom,
+                "geography": dims["geography"], "geography_type": dims["geography_type"],
+                "category": cat, "category_type": cat_type,
+                "other_dims": "; ".join(x for x in (extra, other_s) if x),
+                "value": val, "value_raw": raw, "flag": flag, "unit": unit or unit_default,
+                "kind": "modelled" if modelled or scen else "reported", "check_status": t["check_status"],
+                # how much to trust the MEANING of this number (its digits are a separate question, check_status):
+                # checked = vision table with title and units; labelled = text-layer table whose header was found
+                # and whose measure is known; context needed = digits right, but what they count is not on record
+                "layout": t.get("layout") or "checked",
+            })
+    return out
+
+
+NUMCELL = re.compile(r"^\(?-?\$?\d[\d,]*(\.\d+)?%?\)?$")
+
+
+def row_numeric(row):
+    """Share of a row's filled cells that are numbers. Years and financial years ("2009", "2019-20") count as
+    text: a row of years is a header, not data."""
+    f = [c for c in row if c.strip() and not re.fullmatch(r"(19|20)\d\d([-/–](\d\d|(19|20)\d\d))?", c.strip())]
+    return sum(bool(NUMCELL.match(c.replace(" ", ""))) for c in f) / len(f) if f else 0
+
+
+def snake(s):
+    s = re.sub(r"[^a-z0-9]+", "_", s.lower().replace("\n", " ")).strip("_")
+    return s[:50] or ""
+
+
+def pdfplumber_facts():
+    """Text-layer tables: keep only real statistical tables (3+ rows, 2+ columns, 30%+ numeric cells), find the
+    header (leading mostly-text rows, up to 3, merged per column), then the same rules as vision tables.
+    The numbers are characters from the PDF's text layer, not readings, but nothing checks their sums."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from build_catalogue import describe_column
+    idx = {rel(r["csv_path"]): r for r in csv.DictReader(open(f"{ROOT}/data/extract/tables_index.csv", encoding="utf-8"))}
+    cat = {t["csv_path"]: t for t in csv.DictReader(open(f"{CAT}/tables.csv", encoding="utf-8")) if t["method"] == "pdfplumber"}
+    out, kept, no_header = [], 0, 0
+    for path, t in cat.items():
+        x = idx.get(path)
+        if not x or int(x["n_rows"]) < 3 or int(x["n_cols"]) < 2 or float(x["numeric_share"] or 0) < 0.3:
+            continue
+        with open(f"{ROOT}/{path}", encoding="utf-8", errors="replace") as fh:
+            grid = [r for r in csv.reader(fh) if any(c.strip() for c in r)]
+        if len(grid) < 2:
+            continue
+        width = max(len(r) for r in grid)
+        grid = [r + [""] * (width - len(r)) for r in grid]
+        h = 0
+        while h < min(3, len(grid) - 1) and row_numeric(grid[h]) <= 0.3:
+            h += 1
+        if h == 0:
+            no_header += 1
+            names = [f"col_{j + 1}" for j in range(width)]
+        else:
+            names = [snake(" ".join(grid[r][j] for r in range(h) if grid[r][j].strip())) or f"col_{j + 1}" for j in range(width)]
+        seen = Counter()
+        for j, n in enumerate(names):   # duplicate header text ("2019", "2019") must stay separate columns
+            seen[n] += 1
+            if seen[n] > 1:
+                names[j] = f"{n}_{seen[n]}"
+        data = grid[h:]
+        rows = [dict(zip(names, r)) for r in data]
+        cs = [{"position": j + 1, "column": n, **describe_column(n, [r[j] for r in data])} for j, n in enumerate(names)]
+        meta = {"title": " ".join(grid[0])[:200] if h else "", "units": "", "check_status": "text layer (no check)",
+                "layout": "labelled" if h else "context needed"}
+        facts = [f for f in emit(t["table_id"], meta, cs, rows) if f["flag"] != "blank"]   # empty grid cells are not printed values
+        for f in facts:
+            if f["measure"] == "unknown":
+                f["layout"] = "context needed"
+        for f in facts:
+            f["csv_line"] = int(f["csv_line"]) + h - 1   # emit counts from the first data row as line 2
+        out += facts
+        kept += 1
+    print(f"  pdfplumber: {kept} tables kept of {len(cat)} ({no_header} with no header row), {len(out)} facts")
+    return out
 
 
 def main():
@@ -159,91 +307,20 @@ def main():
                     "geography": "", "geography_type": "", "category": col, "category_type": "payment_type",
                     "other_dims": "; ".join(f"{k}={r[k]}" for k in spec["dims"] if r[k]),
                     "value": val, "value_raw": r[col], "flag": flag, "unit": spec["unit"], "kind": "reported",
-                    "check_status": "pass (clean table identities)"})
+                    "check_status": "pass (clean table identities)", "layout": "checked"})
     for tid, t in tables.items():
         if tid in replaced:
             continue
-        cs = sorted(cols[tid], key=lambda c: int(c["position"]))
-        if not cs:
-            continue
-        # a label column holds text; a column that is all nil ("-") is an empty VALUE column, not a label
-        label = [c for c in cs if c["dimension"] or (c["type"] == "label" and float(c["filled_share"] or 0) > 0)]
-        value = [c for c in cs if c not in label]
-        if not label and value:          # no label column: the first column names the rows
-            label, value = [value[0]], value[1:]
-        tp, tpt = period_in_title(t["title"])
-        modelled = bool(MODELLED.search(t["title"] + " " + t["units"]))
         with open(f"{ROOT}/{t['csv_path']}", encoding="utf-8", errors="replace") as fh:
             rows = list(csv.DictReader(fh))
-        unit_default = t["units"].split(";")[0].split("(")[0].strip()[:60]
-        for i, row in enumerate(rows, start=2):
-            dims = {"geography": "", "geography_type": "", "category": "", "category_type": "", "other_dims": ""}
-            row_period, row_ptype = "", ""
-            other = []
-            for c in label:
-                v = (row.get(c["column"]) or "").strip()
-                d = c["dimension"]
-                if d in GEO and not dims["geography"]:
-                    dims["geography"], dims["geography_type"] = v, d
-                elif d in PERIOD and not row_period:
-                    row_period, row_ptype = (fy(v) or v), d
-                elif not dims["category"]:
-                    # a column the agents called payment / payment_name / payment_type is the shared payment_type
-                    ct = d if d in SHARED else ("payment_type" if re.fullmatch(r"payment(_name|_type)?", c["column"].lower()) else c["column"])
-                    dims["category"], dims["category_type"] = v, ct
-                elif v:
-                    other.append(f"{d if d in SHARED else c['column']}={v}")
-            dims["other_dims"] = "; ".join(other)
-            row_label = " ".join((row.get(c["column"]) or "") for c in label).lower()
-            for c in value:
-                raw = row.get(c["column"]) or ""
-                val, flag = parse_value(raw)
-                p, pt, rest = period_in_name(c["column"])
-                stat, unit, derived = stat_of(c["column"])
-                if p:
-                    period, ptype, pfrom = p, pt, "column name"
-                elif row_period:
-                    period, ptype, pfrom = row_period, row_ptype, "row label"
-                elif tp:
-                    period, ptype, pfrom = tp, tpt, "title"
-                else:
-                    period, ptype, pfrom = "", "", ""
-                if stat == "pct change" and not p and re.findall(FY, t["title"]):
-                    period, ptype, pfrom = " to ".join(fy(x) for x in re.findall(FY, t["title"])[:2]), "change", "title"
-                scen = re.search(r"((?:19|20)\d\d)_?system|system_((?:19|20)\d\d)", c["column"].lower())
-                cat, cat_type = dims["category"], dims["category_type"]
-                extra = dims["other_dims"]
-                measure = "amount" if scen else measure_of(rest)
-                if not scen and PAYMENT_COL.search(c["column"]) and cat_type != "payment_type":
-                    # the column is a payment (austudy, youth_allowance_total): a breakdown, not the measure
-                    if cat:
-                        extra = "; ".join(x for x in (f"{cat_type}={cat}", extra) if x)
-                    cat, cat_type = c["column"], "payment_type"
-                    measure = ""
-                if measure in GENERIC or re.fullmatch(r"[\d\s]+", measure or ""):
-                    measure = measure_from_units(t["units"])
-                if scen:   # 12/13-037 style: the column is a policy scenario, not a period
-                    other_s = f"scenario={(scen.group(1) or scen.group(2))} system"
-                else:
-                    other_s = ""
-                out.append({
-                    "fact_id": f"{tid}:{i}:{c['position']}", "table_id": tid, "csv_line": i, "column": c["column"],
-                    "measure": measure, "stat": stat,
-                    "derived": "yes" if derived else "",
-                    "is_total": "yes" if re.search(r"\btotal\b", row_label) or re.search(r"(^|_)total($|_)", c["column"].lower()) else "",
-                    "period": period, "period_type": ptype, "period_from": pfrom,
-                    "geography": dims["geography"], "geography_type": dims["geography_type"],
-                    "category": cat, "category_type": cat_type,
-                    "other_dims": "; ".join(x for x in (extra, other_s) if x),
-                    "value": val, "value_raw": raw, "flag": flag, "unit": unit or unit_default,
-                    "kind": "modelled" if modelled or scen else "reported", "check_status": t["check_status"],
-                })
+        out += emit(tid, t, sorted(cols[tid], key=lambda c: int(c["position"])), rows)
+    out += pdfplumber_facts()
     fields = list(out[0])
     with open(f"{CAT}/facts.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
         w.writeheader()
         w.writerows(out)
-    print(f"facts.csv: {len(out)} facts from {len({f['table_id'] for f in out})} of {len(tables)} vision tables")
+    print(f"facts.csv: {len(out)} facts from {len({f['table_id'] for f in out})} tables ({len(tables)} vision tables in the catalogue)")
     print("  value parsed:", sum(bool(f["value"]) for f in out), " flags:", dict(Counter(f["flag"] for f in out if f["flag"])))
     print("  period from:", dict(Counter(f["period_from"] or "none" for f in out)))
     print("  kind:", dict(Counter(f["kind"] for f in out)), " derived:", sum(bool(f["derived"]) for f in out))
