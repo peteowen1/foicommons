@@ -45,6 +45,12 @@ extraction session).
   `foreign_logs_only` row is correct. Left: the duplicate downloads
   already on disk stay (2,517 of 12,980 surveyed files): dedupe by sha256 in every count and before extraction.
 
+- **Catalogue and data model (8 October).** `python -P scripts/build_catalogue.py` rebuilds `data/catalogue/`
+  (agencies, logs, requests, document_sources, documents keyed by sha256, tables, columns = data dictionary,
+  series) and `catalogue.duckdb` with a `table_lineage` view. Meaning of every column: `docs/data-model.md`.
+  Rebuild after each harvest, survey or extraction run. Next: the `facts` layer (one row per number with
+  its breakdowns), designed with Pete on real tables first.
+
 ## Queue (ranked)
 
 1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic
