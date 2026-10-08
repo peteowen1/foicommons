@@ -73,8 +73,8 @@ that started the repo).
    **Blind re-read done 8 October (~0.9M tokens): 0 misreadings in a random 60 of the 278 OCR-only cells**,
    and 86 of 87 checkable cells in off-total tables agree, so those gaps are in the source documents. 116 cells
    added to `vision/confirmations.csv`. Verify: 719 of 896 tables pass. `11_12-044__52 p17` Grants Unexpended
-   resolved by Pete: (83,065) as printed; the total not reconciling is the source. Left: 6 cells in tables split across pages 5-6 (12/13-037 foi_20037-3 p5 t4, t12) were never re-read because
-   the re-read only got page 5. Lesson: a blind item must name the row by all its text cells and include every
+   resolved by Pete: (83,065) as printed; the total not reconciling is the source. The 6 cells in tables split across
+   pages 5-6 (12/13-037 foi_20037-3 p5 t4, t12) were re-read with both pages: all agree.
    page the table spans, or the reader answers a different row.
    After all: one blind re-read round for flags (as batch 1), set
    rounding tol on wave-1 tables, mark `10/11-015 doc7 p13` a copy of doc5 p11, look at
