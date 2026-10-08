@@ -258,6 +258,8 @@ def main():
             "n_rows": r["n_rows"], "n_cols": r["n_cols"], "check_status": "text layer (no check)",
             "caption": captions.get(rel(r["csv_path"]), ""), "csv_path": rel(r["csv_path"])})
     for mfile in glob.glob(f"{DATA}/extract/vision/**/*.meta.json", recursive=True):
+        if "/pilot/" in mfile.replace("\\", "/"):
+            continue   # model-comparison pilots re-transcribe tables already in the batch: not data (Haiku squad)
         meta = json.load(open(mfile, encoding="utf-8"))
         base = rel(mfile[: -len(".meta.json")])
         csvp = base + ".csv"

@@ -60,6 +60,15 @@ extraction session).
   4. Needs Pete: Director of National Parks shares DCCEEW's log, so 785 documents count under both agencies
      in per-agency totals. Recommendation: fold Parks into DCCEEW for counting.
 
+- **Haiku check squad (8 October).** After each chunk of work, once `build_catalogue.py` and `build_facts.py`
+  have been rerun: `Workflow({name: "haiku-checks", args: {seed: <new integer>}})` (or `scriptPath:
+  .claude/workflows/haiku-checks.js` if the name is not registered). ~0.7M Haiku tokens, ~4 minutes, read-only:
+  spot-checks 20 vision and 40 text-layer facts against their pages, scans scripts and the catalogue, and
+  compares with the previous reports. Reports: `data/reviews/haiku_*_<seed>.md`. Verify a finding before
+  fixing it: reports have overstated twice ("5 period errors" were 2; "nothing checked" had checked totals).
+  Open from run 12: month headings stored as requests (2,202), field labels as titles (141), 601 requests
+  with no document row, one text-layer table with a column shifted at extraction (18/19-045 p35).
+
 ## Queue (ranked)
 
 1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic

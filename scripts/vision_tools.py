@@ -423,7 +423,7 @@ def check_table(base, meta):
         detail += rs_fail[:10]
 
     # Check: declared column totals (per group)
-    ct_fail = []
+    ct_fail, ct_checked = [], 0
     for rule in meta.get("col_totals", []):
         for grp, printed in rule["totals"].items():
             sel = [r for r in rows if rule.get("group_by") is None or r.get(rule["group_by"]) == grp]
@@ -433,10 +433,13 @@ def check_table(base, meta):
             if to_float(str(printed)) is None:
                 detail.append(f"{rule['col']} {grp}: printed total {printed!r} is not a number, not checked")
                 continue
+            ct_checked += 1
             if abs(s - to_float(str(printed))) > rule.get("tol", 0) + 1e-9:
                 ct_fail.append(f"{rule['col']} {grp}: sum {round(s, 6)} != printed {printed}")
     if meta.get("col_totals"):
-        res["col_totals"] = "pass" if not ct_fail else f"fail ({len(ct_fail)})"
+        # every printed total non-numeric means nothing was checked: that is not a pass (Haiku squad, 8 Oct 2026)
+        res["col_totals"] = (f"fail ({len(ct_fail)})" if ct_fail else "pass" if ct_checked
+                             else "n/a (no numeric printed totals)")
         detail += ct_fail[:10]
 
     checks = [res[k] for k in ("text_layer", "ocr", "ab_agree", "row_sums", "col_totals")]

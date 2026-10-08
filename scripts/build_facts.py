@@ -40,15 +40,37 @@ def rel(p):
 
 
 def fy(s):
-    m = re.search(r"((?:19|20)\d\d)[-/–_ ]?(\d\d)(?!\d)", s)
-    return f"{m.group(1)}-{m.group(2)}" if m else ""
+    """A financial year only when the second part is the following year (2019-20, 2019/20): "2008-12" is a
+    four-year span and "2026-06" part of a date (Haiku squad, 8 October 2026)."""
+    for m in re.finditer(r"((?:19|20)\d\d)[-/–_ ]?(\d\d)(?!\d)", s):
+        if int(m.group(2)) == (int(m.group(1)) + 1) % 100:
+            return f"{m.group(1)}-{m.group(2)}"
+    return ""
+
+
+def row_period_value(v, dim):
+    """A row label's period in standard form, or "" for anything that is not one ("Last updated", "Source")."""
+    v = v.strip()
+    if dim == "financial_year":
+        return fy(v)
+    if dim == "year":
+        return v if re.fullmatch(r"(19|20)\d\d", v) else ""
+    m = re.fullmatch(rf"(?:\d{{1,2}}[\s/-]+)?({MONTHS})[a-z]*\.?[\s,/-]*((?:19|20)?\d\d)", v, re.I)
+    if m:
+        y = m.group(2)
+        y = y if len(y) == 4 else ("20" if int(y) < 50 else "19") + y
+        return f"{y}-{MONTH_NUM[m.group(1).lower()[:3]]:02d}"
+    return ""
 
 
 def period_in_name(name):
     """(period, period_type, name with the period removed) for a value column like lodged_2019_20 or sept09_1st."""
     n = name.lower()
-    m = re.search(r"(?<!\d)((?:19|20)\d\d)_(\d\d)(?!\d)", n)
+    m = re.search(r"(?<!\d)((?:19|20)\d\d)_(\d\d)_(\d\d)(?!\d)", n)   # d_2026_06_22: a full date, not a year
     if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}", "date", n.replace(m.group(0), " ")
+    m = re.search(r"(?<!\d)((?:19|20)\d\d)_(\d\d)(?!\d)", n)
+    if m and int(m.group(2)) == (int(m.group(1)) + 1) % 100:
         return f"{m.group(1)}-{m.group(2)}", "financial_year", n.replace(m.group(0), " ")
     m = re.search(rf"\b({MONTHS})[a-z]*_?(\d\d|(?:19|20)\d\d)(?!\d)", n)
     if m:
@@ -177,7 +199,8 @@ def emit(tid, t, cs, rows):
             if d in GEO and not dims["geography"]:
                 dims["geography"], dims["geography_type"] = v, d
             elif d in PERIOD and not row_period:
-                row_period, row_ptype = (fy(v) or v), d
+                row_period = row_period_value(v, d)
+                row_ptype = d if row_period else ""
             elif not dims["category"]:
                 # a column the agents called payment / payment_name / payment_type is the shared payment_type
                 ct = d if d in SHARED else ("payment_type" if re.fullmatch(r"payment(_name|_type)?", c["column"].lower()) else c["column"])
