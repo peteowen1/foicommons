@@ -65,11 +65,31 @@ throttle <- function(host, delay) {
   .fc$last[[host]] <- Sys.time()
 }
 
+# Blocks persist across runs in the same file harvest_helpers.R uses (data/registry/blocked_hosts.csv).
+# Before 8 October 2026 fc_get kept them in memory only, so the next run of scrape_dss.R,
+# scrape_servicesaustralia.R or wayback.R would try a host that had answered 403/429.
+FC_BLOCKED_FILE <- file.path(FC_DATA, "registry", "blocked_hosts.csv")
+fc_load_blocked <- function() {
+  if (isTRUE(.fc$blocked_loaded)) return(invisible())
+  if (file.exists(FC_BLOCKED_FILE)) .fc$blocked <- unique(c(.fc$blocked, read.csv(FC_BLOCKED_FILE, colClasses = "character")$host))
+  .fc$blocked_loaded <- TRUE
+}
+fc_record_block <- function(host, status, url) {
+  .fc$blocked <- unique(c(.fc$blocked, host))
+  known <- if (file.exists(FC_BLOCKED_FILE)) read.csv(FC_BLOCKED_FILE, colClasses = "character")$host else character()
+  if (host %in% known) return(invisible())
+  dir.create(dirname(FC_BLOCKED_FILE), showWarnings = FALSE, recursive = TRUE)
+  ex <- file.exists(FC_BLOCKED_FILE)
+  write.table(data.frame(host = host, blocked_at = format(Sys.time(), tz = "UTC"), status = status, url = url, why = "fc_get"),
+              FC_BLOCKED_FILE, sep = ",", row.names = FALSE, col.names = !ex, append = ex, qmethod = "double")
+}
+
 # Returns list(status, body, path, type, note). Never bypasses blocks: a 403/429 marks the
-# host blocked and later calls to it return status 0.
+# host blocked (in memory and in blocked_hosts.csv) and later calls to it return status 0.
 fc_get <- function(url, dest = NULL, delay = NULL) {
+  fc_load_blocked()
   host <- host_of(url)
-  if (host %in% .fc$blocked) return(list(status = 0L, note = "host blocked earlier in run"))
+  if (host %in% .fc$blocked) return(list(status = 0L, note = "host blocked earlier (this run or recorded in blocked_hosts.csv)"))
   if (!robots_ok(url)) return(list(status = 0L, note = "disallowed by robots.txt"))
   if (is.null(delay)) delay <- host_delay(host)
   throttle(host, delay)
@@ -79,7 +99,7 @@ fc_get <- function(url, dest = NULL, delay = NULL) {
   .fc$last[[host]] <- Sys.time()   # count from the END of the request (big downloads)
   if (inherits(resp, "error")) return(list(status = -1L, note = conditionMessage(resp)))
   st <- resp_status(resp)
-  if (st %in% c(403, 429)) { .fc$blocked <- c(.fc$blocked, host); log_msg("BLOCKED %s on %s - stopping this host", st, host) }
+  if (st %in% c(403, 429)) { fc_record_block(host, st, url); log_msg("BLOCKED %s on %s - stopping this host", st, host) }
   list(status = st, body = if (is.null(dest) && st < 400) resp_body_raw(resp) else NULL, path = dest,
        type = resp_header(resp, "content-type") %||% "", note = "")
 }

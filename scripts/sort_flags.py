@@ -33,7 +33,9 @@ def failed(v):
 def gaps(detail):
     """(gap, number of parts) for every failed sum named in the detail column."""
     out = []
-    for m in re.finditer(r"\[([^\]]*)\] sum (-?[\d.]+) != total (-?[\d.]+)", detail):   # row sums
+    # verify prints the total COLUMN'S NAME here ("sum 2.7 != total_value_of_measure 2.8"), not the word "total";
+    # matching only "total" found 1 of 13 row-sum flags (Haiku script scan, 8 October 2026)
+    for m in re.finditer(r"\[([^\]]*)\] sum (-?[\d.]+) != \S+ (-?[\d.]+)", detail):   # row sums
         out.append((abs(float(m.group(2)) - float(m.group(3))), m.group(1).count(",") + 1))
     for m in re.finditer(r": sum (-?[\d.]+) != printed (-?[\d.]+)", detail):   # column totals
         out.append((abs(float(m.group(1)) - float(m.group(2))), None))

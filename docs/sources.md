@@ -7,7 +7,7 @@ Checked 7 October 2026. User-Agent: `foicommons-archiver/0.1 (personal research 
 - robots.txt (www.dss.gov.au): no crawl-delay. Disallows `/search`, `/admin/`, `/taxonomy/` etc. The log and `/system/files/` are not disallowed. No terms page about automated access was found on the FOI pages; we apply 3s between requests.
 - Structure: each item is a "card" with Reference number (e.g. FOI LEX 56747), Release date, Publication date (some cards), Decision (e.g. Partial release; some cards lack it), Summary of request, and a list of PDF links with size labels. Files live under `/system/files/documents/YYYY-MM/`. Every label/value pair is kept in `extra_json`.
 - Items found: 349 item-document rows across 16 pages (about 315 unique reference numbers; some items have several PDFs).
-- Oddities: other DSS logs exist and are NOT yet archived: `portfolio-agencies-freedom-information-disclosure-log` and `portfolio-ministers-freedom-information-disclosure-log`. The older known file `https://dss.gov.au/system/files/foi-attachments/foi-2122-068-document.pdf` returns a 301 from the bare domain and is not on the current log (older log pre-dates the card layout); not yet followed up. Some PDFs are very large (up to ~160 MB).
+- Oddities: two other DSS logs, `portfolio-agencies-freedom-information-disclosure-log` and `portfolio-ministers-freedom-information-disclosure-log`, were archived by the all-agency harvest (`dss-portfolio-agencies`, `dss-portfolio-ministers`, complete 8 October 2026). The older log that pre-dates the card layout was recovered from the Internet Archive (see below). Some PDFs are very large (up to ~160 MB).
 
 - Internet Archive (checked 7 October 2026, CDX API, 5 queries 3s apart, project User-Agent; web.archive.org
   has no robots.txt, it returns 404). The current log URL only exists from December 2024 (15 monthly
@@ -69,3 +69,19 @@ only FOI link is the performance audit "Administration of the Freedom of Informa
 Entities" (Report No. 32 of 2025-26), which links to the PMC, Treasury and Infrastructure logs. Discovery
 took those as ANAO's own (fixed in `R/build_registry.R`, `d203ba5`). Search summaries say the Auditor-General
 and ANAO are exempt from the FOI Act: UNVERIFIED against the Act text (Schedule 2).
+
+## All-agency harvest: what is recorded where (8 October 2026)
+
+The all-agency run (`run_full.sh`) checks robots.txt for every log before harvesting and records the result per
+log in `data/registry/agencies.csv` (`robots_ok`) and in the catalogue (`data/catalogue/logs.csv`). Those columns
+are the per-source record for the ~150 logs that have no section here; a source gets its own section when it
+needs a judgement call (terms, blocks, oddities). Every block is in `data/registry/blocked_hosts.csv` and the
+harvester never retries a blocked host.
+
+Blocks not described elsewhere in this file:
+
+- `www.acara.edu.au`: HTTP 403 on 2026-10-07 (challenge / access denied page); first URL `https://www.acara.edu.au/online-enquiry`
+- `parlinfo.aph.gov.au`: HTTP 403 on 2026-10-07 (3 consecutive 403 on documents); first URL `https://parlinfo.aph.gov.au/parlInfo/download/committees/estimate/28521/toc_pdf/Finance%20`
+- `service02.afca.org.au`: HTTP 403 on 2026-10-07 (challenge / access denied page); first URL `https://service02.afca.org.au/CaseFiles/FOSSIC/629909.pdf`
+- `www.awm.gov.au`: HTTP 429 on 2026-10-07 (429 rate limited); first URL `https://www.awm.gov.au/sites/default/files/2025-26-21-combined_0.pdf`
+- `www.ndis.gov.au`: HTTP 403 on 2026-10-08 (challenge / access denied page); first URL `https://www.ndis.gov.au/olddisability-related-health-supports`

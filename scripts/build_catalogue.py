@@ -149,6 +149,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--log", help="only this log (and its agency)")
     a = ap.parse_args()
+    global OUT
+    if a.log:   # a one-log review build must never overwrite the full catalogue (Haiku script scan, 8 October 2026)
+        OUT = f"{DATA}/catalogue_review"
 
     # ---- agencies and logs ----
     reg = read(f"{DATA}/registry/agencies.csv")

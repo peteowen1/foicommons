@@ -146,7 +146,14 @@ def emit(tid, t, cs, rows):
     value = [c for c in cs if c not in label]
     if not label and value:          # no label column: the first column names the rows
         label, value = [value[0]], value[1:]
-    tp, tpt = period_in_title(t["title"])
+    # a financial year printed in the units ("$ (2010/11)") beats a bare year in the title ("as at ... 2010")
+    up, upt = period_in_title(t["units"])
+    tp, tpt = (up, upt) if upt == "financial_year" else period_in_title(t["title"])
+    tsrc = "units" if upt == "financial_year" else "title"
+    if tpt == "year":
+        ctx = (t["title"] + " " + t["units"]).lower()
+        if re.search(r"year (ended|ending|to) 30 june", ctx):
+            tp, tpt = f"{int(tp) - 1}-{int(tp) % 100:02d}", "financial_year"
     modelled = bool(MODELLED.search(t["title"] + " " + t["units"]))
     unit_default = t["units"].split(";")[0].split("(")[0].strip()[:60]
     for i, row in enumerate(rows, start=2):
@@ -172,13 +179,21 @@ def emit(tid, t, cs, rows):
             raw = row.get(c["column"]) or ""
             val, flag = parse_value(raw)
             p, pt, rest = period_in_name(c["column"])
+            if pt == "year":
+                # A bare year column means different things by the table's June wording (Haiku spot-check, 8 Oct 2026):
+                # "year ended 30 June 2010" -> 2009-10; "at 30 June 2006" -> the date 2006-06-30. Never guess forward.
+                ctx = (t["title"] + " " + t["units"]).lower()
+                if re.search(r"year (ended|ending|to) 30 june", ctx):
+                    p, pt = f"{int(p) - 1}-{int(p) % 100:02d}", "financial_year"
+                elif re.search(r"\bas at 30 june|\bat 30 june", ctx):
+                    p, pt = f"{p}-06-30", "date"
             stat, unit, derived = stat_of(c["column"])
             if p:
                 period, ptype, pfrom = p, pt, "column name"
             elif row_period:
                 period, ptype, pfrom = row_period, row_ptype, "row label"
             elif tp:
-                period, ptype, pfrom = tp, tpt, "title"
+                period, ptype, pfrom = tp, tpt, tsrc
             else:
                 period, ptype, pfrom = "", "", ""
             if stat == "pct change" and not p and re.findall(FY, t["title"]):
@@ -191,7 +206,7 @@ def emit(tid, t, cs, rows):
                 # the column is a payment (austudy, youth_allowance_total): a breakdown, not the measure
                 if cat:
                     extra = "; ".join(x for x in (f"{cat_type}={cat}", extra) if x)
-                cat, cat_type = c["column"], "payment_type"
+                cat, cat_type = c["column"].replace("_", " "), "payment_type"   # "other pension deemed", not the code name
                 measure = ""
             if measure in GENERIC or re.fullmatch(r"[\d\s]+|col \d+", measure or ""):
                 measure = measure_from_units(t["units"])
