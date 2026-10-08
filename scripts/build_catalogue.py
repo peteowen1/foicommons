@@ -42,6 +42,62 @@ def iso_date(raw):
     return ""
 
 
+FIELD_RULES = [   # (what, field-name pattern); first matching field wins. Names seen across 9,231 parsed rows.
+    ("reference", re.compile(r"^disclosure log (number|no\.?)$|^(foi\s*)?(reference|ref)(\s*(no\.?|number))?$|^foi(\s*(request|no\.?|number|ref\.?))?$|^(foi\s*)?reference number$|^request (id|number)$", re.I)),
+    ("title", re.compile(r"description|scope|summary|^details?$|subject|^request$|title|documents? (released|provided|published)$", re.I)),
+    ("date", re.compile(r"release date|disclosure date|publication date|date of (access|publication|release|disclosure)|^date|date (published|released)", re.I)),
+    ("decision", re.compile(r"^access$|decision|outcome", re.I)),
+]
+
+
+HEADING_RX = re.compile(r"^\s*(foi |freedom of information )?disclosure log( \d{4})?( \(?(january|july) to (june|december)\)?)?\s*$|"
+                        r"^\s*(january|february|march|april|may|june|july|august|september|october|november|december)( \d{4})?\s*$", re.I)
+CARD_LABELS = ["FOI Reference number", "FOI reference number", "Reference number", "Disclosure log number", "Disclosure log", "FOI reference",
+               "Date of access", "Date of publication", "Date of release", "Release date", "Publication date", "Date published",
+               "FOI request", "Summary of request", "Description of documents", "Description", "Subject", "Decision",
+               "Information published in the disclosure log", "Documents released", "Other information"]
+CARD_RX = re.compile("(" + "|".join(re.escape(l) for l in sorted(CARD_LABELS, key=len, reverse=True)) + r")\s*:?\s*")
+
+
+def card_fields(text):
+    """Log entries laid out as cards ("FOI Reference number: LEX14132 Date of access 30 September 2026 FOI request
+    The department's policy ...") hold the same fields as table logs, in running text: split at the labels."""
+    hits = list(CARD_RX.finditer(text or ""))
+    out = {}
+    for i, m in enumerate(hits):
+        end = hits[i + 1].start() if i + 1 < len(hits) else len(text)
+        out.setdefault(m.group(1), text[m.end():end].strip(" .;|"))
+    return json.dumps(out) if len(out) >= 2 else ""
+
+
+def pick_fields(fields_json):
+    """(reference, title, date, decision) from a document row's parsed log-table fields, '' where absent."""
+    try:
+        f = json.loads(fields_json) if fields_json else {}
+    except ValueError:
+        return "", "", "", ""
+    if not isinstance(f, dict):
+        return "", "", "", ""
+    got = {}
+    for what, rx in FIELD_RULES:
+        for k, v in f.items():
+            k2 = re.sub(r"\s+sort (ascending|descending)$", "", k.strip(), flags=re.I)
+            if isinstance(v, str) and v.strip() and rx.search(k2) and not re.match(r"^col\d+$", k2):
+                got[what] = v.strip()
+                break
+    # "FOI request" is the reference in some table logs and the request's description on DFAT's cards: a long
+    # "reference" is really the title
+    if len(got.get("reference", "")) > 40:
+        got.setdefault("title", got["reference"])
+        got.pop("reference")
+    if "title" not in got:   # a long value under a reference-like label is the request's description
+        for k, v in f.items():
+            if isinstance(v, str) and len(v.strip()) > 40 and re.fullmatch(r"foi request|request", k.strip(), re.I):
+                got["title"] = v.strip()
+                break
+    return got.get("reference", "")[:80], got.get("title", "")[:300], got.get("date", "")[:60], got.get("decision", "")[:120]
+
+
 def bare_host(u):
     u = (u or "").strip()
     if not u:
@@ -204,18 +260,32 @@ def main():
                 continue          # listing pages, navigation pages, mailto links are not requests; agency logs
                                   # list a request only through its documents (phase 1 DSS also lists email-only ones)
             has_file = r.get("http_status") == "200" and r.get("local_path") and r.get("sha256")
+            reference = r.get("reference", "")
             if "log_slug" in r:   # all-agency harvest layout
                 log = OLD_SOURCES.get(r["log_slug"], r["log_slug"]); key = r["item_id"] or r["detail_url"] or r["title"]
                 title = r["title"] or r["item_text"][:200]; release = r["date_detected"]; decision = r["decision"]
+                # Where the log is a table, the harvester parsed each document's own row into fields_json (its FOI
+                # reference, description, date, decision). Use it: r["title"] is the page section ("Disclosure Log
+                # 2023 (July to December)"), which made 2,202 month headings look like requests (Haiku squad).
+                fj = r.get("fields_json", "")
+                if not fj or not fj.strip("{} "):
+                    fj = card_fields(r.get("item_text", ""))   # card-style logs: same fields, in running text
+                fr, ft, fd, fdec = pick_fields(fj)
+                reference, title, release, decision = fr or reference, ft or title, fd or release, fdec or decision
             else:                 # phase 1 layout
                 log = OLD_SOURCES.get(r["source"], r["source"]); key = r["reference"] or r["title"]
                 title = r["title"]; release = r["release_date"]; decision = r["decision"]
             # the same request reached through two manifests (phase 1 and the all-agency run) must be one
             # request: key on the FOI reference when there is one, normalised ("FOI_LEX_56712" = "FOI LEX 56712")
-            ref = re.sub(r"[^A-Z0-9]", "", r.get("reference", "").upper())
+            # a page heading ("FOI disclosure log 2025", "Disclosure Log 2023 (July to December)") is where the entry
+            # sits, not what was requested: keep it as log_section and leave the title blank rather than misleading
+            section = ""
+            if HEADING_RX.search(title or ""):
+                section, title = title.strip()[:120], ""
+            ref = re.sub(r"[^A-Z0-9]", "", reference.upper())
             rid = short_id(log, ref) if ref else short_id(log, key)
-            requests.setdefault(rid, {"request_id": rid, "log_slug": log, "foi_reference": r.get("reference", "").strip(),
-                                      "title": title.strip()[:300], "release_date": release, "release_date_iso": iso_date(release), "decision": decision})
+            requests.setdefault(rid, {"request_id": rid, "log_slug": log, "foi_reference": reference.strip(),
+                                      "title": title.strip()[:300], "log_section": section, "release_date": release, "release_date_iso": iso_date(release), "decision": decision})
             if not has_file or ("log_slug" in r and r.get("link_type") != "document"):
                 continue          # the request is kept even when its documents were not released online
             sources.append({"request_id": rid, "doc_id": r["sha256"], "log_slug": log, "local_path": rel(r["local_path"]),
@@ -336,7 +406,7 @@ def main():
     print(f"catalogue -> {OUT}" + (f" (log {a.log} only)" if a.log else ""))
     write("agencies", list(agencies.values()), ["agency_slug", "agency", "portfolio", "website", "type_of_body", "staff_asl", "agor_id", "foi_page_url"])
     write("logs", list(logs.values()), ["log_slug", "agency_slug", "log_url", "discovery_status", "how_found", "robots_ok", "harvest_status", "harvested_at", "n_requests", "note"])
-    write("requests", list(requests.values()), ["request_id", "log_slug", "foi_reference", "title", "release_date", "release_date_iso", "decision", "n_documents"])
+    write("requests", list(requests.values()), ["request_id", "log_slug", "foi_reference", "title", "log_section", "release_date", "release_date_iso", "decision", "n_documents"])
     write("document_sources", sources, ["request_id", "doc_id", "log_slug", "local_path", "doc_url", "bytes"])
     write("documents", list(documents.values()), ["doc_id", "ext", "bytes", "pages", "scanned_pages", "text_table_lines", "class", "n_tables", "n_sources", "example_path"])
     write("tables", tables, ["table_id", "doc_id", "method", "pages", "table_n", "title", "caption", "units", "n_rows", "n_cols", "check_status", "csv_path"])

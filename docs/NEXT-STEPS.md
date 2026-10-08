@@ -66,8 +66,10 @@ extraction session).
   spot-checks 20 vision and 40 text-layer facts against their pages, scans scripts and the catalogue, and
   compares with the previous reports. Reports: `data/reviews/haiku_*_<seed>.md`. Verify a finding before
   fixing it: reports have overstated twice ("5 period errors" were 2; "nothing checked" had checked totals).
-  Open from run 12: month headings stored as requests (2,202), field labels as titles (141), 601 requests
-  with no document row, one text-layer table with a column shifted at extraction (18/19-045 p35).
+  Open from run 12: field labels as titles (141), 601 requests with no document row, one text-layer table
+  with a column shifted at extraction (18/19-045 p35). Month headings as requests (2,202): fixed 8 October,
+  each document row's own parsed fields (or card text) now give reference, title and date; 575 DFAT entries
+  whose log gives only a year heading keep it in `log_section` with a blank title.
 
 ## Queue (ranked)
 

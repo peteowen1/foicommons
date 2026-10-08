@@ -67,7 +67,8 @@ Phase 1 sources are mapped onto logs: `dss` and `dss_detail` -> `dss-main`, `ser
 |---|---|
 | request_id | key; hash of log + normalised FOI reference ("FOI_LEX_56712" = "FOI LEX 56712"), or of the log entry when there is no reference |
 | foi_reference | as printed in the log |
-| title | request title (phase 1 parsed title where available; otherwise the log entry's text) |
+| title | what was requested: phase 1's parsed title; for agency logs, the document row's own parsed field ("Description of Documents", "Scope of Request", "Subject", DFAT's "FOI request" ...) from `fields_json`, or from the card text when the log is laid out as cards; else the log entry's text. Blank when the log gives only a page heading |
+| log_section | the page heading the entry sits under ("FOI disclosure log 2025", "Disclosure Log 2023 (July to December)") when that was all the log gave as a title |
 | release_date | as printed; formats vary |
 | release_date_iso | YYYY-MM-DD; blank when absent or not a real date (outside 1982..today, e.g. "2025-26-26", "6 May 1958") |
 | log_slug | → logs |
