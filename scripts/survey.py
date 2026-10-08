@@ -13,6 +13,8 @@ Resumable: files already in <out csv> are skipped; one row is written per file.
 """
 import csv, os, re, subprocess, sys
 
+csv.field_size_limit(sys.maxsize)   # agency manifests carry whole detail-page text in one field
+
 ROOT = "C:/dev/foicommons"
 NUM_CELL = re.compile(r"^\(?-?\$?\d[\d,]*(\.\d+)?%?\)?$")
 FIELDS = ["chars", "class", "ext", "file", "kind", "mb", "missing", "pages", "reference", "release_date",
@@ -49,7 +51,10 @@ def main(manifest, out):
         with open(out, encoding="utf-8") as fh:
             done = {r["file"] for r in csv.DictReader(fh)}
     with open(manifest, encoding="utf-8") as fh:
-        rows = [r for r in csv.DictReader(fh) if r["http_status"] == "200" and r["local_path"]]
+        # Agency manifests (R/scrape_*.R via run_all.R) also list log pages and links: keep downloaded
+        # documents only, and read their log_slug / date_detected as source / release date.
+        rows = [r for r in csv.DictReader(fh) if r["http_status"] == "200" and r["local_path"]
+                and r.get("link_type", "document") == "document"]
     new = not os.path.exists(out)
     n = 0
     with open(out, "a", newline="", encoding="utf-8") as fh:
@@ -61,8 +66,8 @@ def main(manifest, out):
             if path in done:
                 continue
             ext = os.path.splitext(path)[1].lower()
-            rec = {"file": path, "ext": ext, "source": r["source"], "reference": r["reference"], "title": r["title"],
-                   "release_date": r["release_date"], "missing": int(not os.path.exists(path)),
+            rec = {"file": path, "ext": ext, "source": r.get("source") or r.get("log_slug", ""), "reference": r["reference"], "title": r["title"],
+                   "release_date": r.get("release_date") or r.get("date_detected", ""), "missing": int(not os.path.exists(path)),
                    "mb": round(os.path.getsize(path) / 1e6, 2) if os.path.exists(path) else ""}
             if rec["missing"]:
                 rec["class"] = "missing"
