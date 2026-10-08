@@ -117,7 +117,12 @@ def describe_column(name, vals):
     dim = ""
     lengths = sorted(len(v) for v in filled)
     short = bool(lengths) and lengths[len(lengths) // 2] <= 40   # prose "tables" (captions, paragraphs) carry no breakdown
-    if kind != "number" and short:
+    # a column of plain years (1998, 2000, ...) is numeric but is a breakdown, not a value: tag it so facts
+    # use it as the row's period (Haiku doc check and re-check, 8 October 2026)
+    if kind == "number" and len(filled) >= 2 and share(filled, lambda v: re.fullmatch(r"(19[89]\d|20[0-4]\d)", v.strip())) == 1 \
+            and (re.search(r"year|^yr|period", name.lower()) or name.strip() == ""):
+        kind, dim = "label", "year"
+    elif kind != "number" and short:
         for d, test in DIMENSIONS:
             if test(name.lower(), filled):
                 dim = d

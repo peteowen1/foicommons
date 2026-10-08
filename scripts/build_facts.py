@@ -61,6 +61,17 @@ def period_in_name(name):
 
 
 def period_in_title(title):
+    # A dd/mm/yyyy date ("as at 16/07/2010") is a DATE period, never a bare year: read as a year it made a
+    # 2010-11 budget dated July 2010 into "2010" (Haiku re-check, 8 October 2026). For a count "as at
+    # 30/06/2011" the date is the right period; for a budget it at least says "dated", not "the year 2010".
+    # A financial year anywhere in the title still wins.
+    dates = {(int(d), int(m), int(y) + (2000 if int(y) < 50 else 1900) if len(y) == 2 else int(y))
+             for d, m, y in re.findall(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})\b", title)}
+    title = re.sub(r"\b\d{1,2}[/.-]\d{1,2}[/.-](\d{4}|\d{2})\b", " ", title)
+    if not re.search(FY, title) and len(dates) == 1:
+        d, m, y = dates.pop()
+        if 1 <= m <= 12 and 1 <= d <= 31 and 1982 <= y <= 2030:
+            return f"{y}-{m:02d}-{d:02d}", "date"
     t = title.lower()
     m = re.search(rf"\b({MONTHS})[a-z]*\.?\s+((?:19|20)\d\d)\b", t)
     fys = {fy(x) for x in re.findall(FY, title)}
