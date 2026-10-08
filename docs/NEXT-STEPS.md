@@ -54,8 +54,8 @@ extraction session).
    69/70 with 1 false positive (147k tokens; `pilot_haiku55.json`). **Use Haiku 5.5 for the full triage.**
    Its only miss is D018 p21; the one false positive (D019 p1) is the same page Sonnet flagged, so the
    answer key may be wrong there (not checked).
-   **Full triage done 8 October** (10 Haiku 5.5 agents, ~2.4M tokens; batch 03 wrote its file but never
-   reported its model ID). `scripts/merge_triage.py` -> `scanned_wayback/triage.json`: 699 of 6,886
+   **Full triage done 8 October** (10 Haiku 5.5 agents, ~2.4M tokens; all 10 confirmed `claude-haiku-5-5`;
+   batch 03 reported last). `scripts/merge_triage.py` -> `scanned_wayback/triage.json`: 699 of 6,886
    pages flagged (330 stats, 252 charts, 117 maybe) in 139 documents. Copies of the same document
    dropped (12/13-065 re-released four 12/13-073 docs; D550 = D158): **322 stats pages in 112 documents
    to transcribe** (`to_transcribe.json`). Invoices and fee schedules are kept (batches disagreed;
