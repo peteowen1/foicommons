@@ -106,3 +106,23 @@ per page and runs unattended. Decide once the archive run finishes and page coun
   check (blind reader said 415, page prints 390), 3 unresolvable (55799 p32 averages, 3 vs 5 at 144 dpi).
   308 scanned tables: 306 pass, 2 flag (FOI 2122-026 p36 t5 source arithmetic; 55799 p32 the 3 averages).
   Clean 55799 table: 5,040 rows = 72 blocks x 70 rows; all 16 identities pass in all 432 block-columns.
+- 8 October 2026: Internet Archive DSS batch (`data/extract/vision/scanned_wayback/`). Triage of 6,886 scanned
+  pages on 431 packed contact sheets by Haiku 5.5 (pilot: 69/70 table pages, 1 false positive; Sonnet 67/70, 1;
+  Haiku 4.5 66/70, 81), then the batch-1 pipeline on 324 pages: 556 tables, ~6.3M Sonnet tokens (~20k/page).
+  Blind second reading: 0 misreadings in a random 60 of the 278 cells only one reader had seen; 86 of 87
+  checkable cells in tables whose totals do not add up agreed, so those gaps are in the sources.
+  Lessons, each learned the expensive way:
+  - Run OCR to completion BEFORE cutting strips. `sideways()` reads the OCR; run early it says "upright" and
+    the page is cut across its columns (8 pages). `ocr_pages.py strips` now refuses pages without OCR.
+  - Agents will fit a cell to make a total add up (one did: neither reading, just the balancing value, which
+    then passed every check). The brief now forbids it; the fix was to revert and leave the sum flagged.
+    Also forbidden after the run: copying a value from another document's copy of the same table.
+  - Agents set loose tolerances (0.3 for a one-cent gap). Tighten to the smallest passing value by script.
+  - A blind re-read item must name the row by ALL its text cells (numbers masked) and give every page the
+    table spans. With only the first column (often a section name like "expenses") or one page, readers
+    answered a different row and the sample looked like 22 disagreements; after fixing the locator: none.
+    Never paste checker "detail" text into an item: it carries other cells' values.
+  - Many 12/13-044 slide PDFs carry an embedded text layer without the table's numbers: "not in text layer"
+    there is a false alarm when OCR passes (`sort_flags.py` groups these).
+  - 12/13-037 family payment tables print totals that omit the Family Supplement row: a source quirk
+    across ~28 tables, not a misreading.
