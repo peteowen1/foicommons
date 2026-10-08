@@ -126,3 +126,9 @@ per page and runs unattended. Decide once the archive run finishes and page coun
     there is a false alarm when OCR passes (`sort_flags.py` groups these).
   - 12/13-037 family payment tables print totals that omit the Family Supplement row: a source quirk
     across ~28 tables, not a misreading.
+- 8 October 2026: the free line pre-filter (`table_filter.py`) does NOT work as triage. Scored on the 6,886
+  wayback pages (`table_filter.py score_batch data/extract/vision/scanned_wayback`; labels from triage.json):
+  at its original settings it keeps 30% of pages and only 136 of 355 table pages (38%). The thin ruled lines
+  turn light grey at 36 dpi, so a lighter threshold was swept too (dark < 200 or < 225, line length 20% or
+  35% of width, 2-4 lines): best trade is 56% of pages kept for 77% of table pages. Many tables are unruled
+  or faint, so every setting loses tables at roughly the rate it saves cost. Do not use it to cut triage.
