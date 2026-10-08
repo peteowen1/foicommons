@@ -91,8 +91,12 @@ that started the repo).
    on the next `Rscript R/wayback.R size`; the largest domains need CDX paging.
 3. **When the all-agency run finishes**: rerun the survey and pdfplumber over everything, count
    pages needing vision, then decide on the Claude API batch interface for scale (cost per page).
-4. **Back up extracted tables**: `data/extract/` to GitHub release assets (piggyback pattern).
-   Raw PDFs stay local; they can be re-fetched while still online, so the Internet Archive step matters.
+4. **Back up extracted tables: first backup done 8 October.** Private release `extract-backup` on the
+   (private) repo holds `foicommons_extract_2026-10-08.tar.gz` (4.4 MB, 9,967 files: all of `data/extract/`
+   except page images, which rebuild from the PDFs). Round-trip checked byte-identical. Refresh after each
+   extraction run: `tar --force-local --exclude='*.png' -czf <dated>.tar.gz -C data extract` then
+   `gh release upload extract-backup <file>`. Never make this release public (`docs/rights.md`). Raw PDFs stay
+   local; they can be re-fetched while online, so the Internet Archive step matters.
 5. **Jericho piece follow-ups**: interactive SVG flow chart (site rule; current one is a mermaid
    placeholder); Newstart totals for 2007-2012 to turn the FOI 19/20-073 partial-capacity counts into
    shares. (Coronavirus Supplement start date of 27 April 2020 confirmed against the Parliamentary Library, 7 October.)
