@@ -95,20 +95,37 @@ for (i in seq_len(nrow(agor))) {
 }
 
 # ---- assemble agencies.csv: one row per log (agencies without a log keep one row) ----
+# An agency's FOI page can link to OTHER agencies' disclosure logs (ANAO's links to PMC, Treasury and
+# Infrastructure; ARENA's to DCCEEW). Keeping those harvested the same documents twice under the wrong
+# agency (19% duplicate downloads, 8 October 2026). Drop a log on another host unless it is a known
+# legitimate case. Slugs are still computed over the full list, so surviving logs keep their old slug and
+# their manifest (renaming one would re-harvest it from scratch).
+LOG_HOST_OK <- c("cer.gov.au", "nzea.gov.au", "publichospitalfunding.gov.au", "webarchive.nla.gov.au")
+bare_host <- function(u) sub("^www\\.", "", tolower(host_of(if (grepl("^https?://", u)) u else paste0("http://", u))))
+foreign_log <- function(u, site) {
+  h <- bare_host(u); s <- bare_host(site)
+  !(h == s || endsWith(h, paste0(".", s)) || endsWith(s, paste0(".", h)) || h %in% LOG_HOST_OK)
+}
+dropped <- character()
 disc <- read.csv(DISC, colClasses = "character", encoding = "UTF-8", na.strings = character())
 rows <- list(); used <- character()
 for (i in seq_len(nrow(agor))) {
   a <- agor[i, ]; d <- disc[disc$slug == a$slug, ][1, ]
   logs <- if (nzchar(d$log_urls)) trimws(strsplit(d$log_urls, "\\|")[[1]]) else ""
-  for (j in seq_along(logs)) {
-    u <- logs[j]; lslug <- if (nzchar(u) && length(logs) > 1) paste0(substr(a$slug, 1, 40), "-", substr(slugify(sub("/$", "", basename(url_path_noq(u)))), 1, 30)) else a$slug
+  n_kept <- 0
+  for (j in c(seq_along(logs), 0L)) {   # j = 0: placeholder row for an agency whose every log was dropped
+    if (j == 0L && n_kept > 0) break
+    u <- if (j == 0L) "" else logs[j]; lslug <- if (nzchar(u) && length(logs) > 1) paste0(substr(a$slug, 1, 40), "-", substr(slugify(sub("/$", "", basename(url_path_noq(u)))), 1, 30)) else a$slug
     lslug <- gsub("-+$", "", lslug); if (lslug %in% used) lslug <- paste0(lslug, "-", j); used <- c(used, lslug)
     if (nzchar(u) && a$slug == "department-of-social-services" && grepl("our-freedom", u)) lslug <- "dss-main"
     if (nzchar(u) && a$slug == "services-australia") lslug <- "servicesaustralia-log"
     if (nzchar(u) && a$slug == "department-of-social-services" && grepl("portfolio-agencies", u)) lslug <- "dss-portfolio-agencies"
     if (nzchar(u) && a$slug == "department-of-social-services" && grepl("portfolio-ministers", u)) lslug <- "dss-portfolio-ministers"
+    if (j > 0L && nzchar(u) && foreign_log(u, a$`Website Address`)) { dropped <- c(dropped, sprintf("%s -> %s", a$Title, u)); next }
+    if (j == 0L) lslug <- a$slug
+    n_kept <- n_kept + 1
     ok <- if (nzchar(u)) tryCatch(as.character(robots_ok(u)), error = function(e) "") else ""
-    blocked <- if (nzchar(u) && host_of(u) %in% .fc$blocked) "blocked" else d$status
+    blocked <- if (nzchar(u) && host_of(u) %in% .fc$blocked) "blocked" else if (j == 0L) "foreign_logs_only" else d$status
     rows[[length(rows) + 1]] <- data.frame(run_order = a$run_order, agency = a$Title, agency_slug = a$slug, log_slug = lslug, portfolio = a$Portfolio,
       website = a$`Website Address`, foi_page_url = d$foi_page_url, disclosure_log_url = u, how_found = d$how_found, robots_ok = ok,
       status = blocked, notes = d$notes, agor_id = a$Id, agor_type_of_body = a$`Type of Body`, agor_asl = a$`Average Staffing Level (ASL)`, stringsAsFactors = FALSE)
@@ -121,5 +138,6 @@ names(extra) <- paste0("agor_", gsub("[^a-z0-9]+", "_", tolower(names(extra))))
 res_df <- cbind(out, extra)
 res_df[] <- lapply(res_df, function(x) gsub("[\r\n]+", " ", enc2utf8(iconv(as.character(x), "UTF-8", "UTF-8", sub = ""))))
 write.csv(res_df, file.path(REG_DIR, "agencies.csv"), row.names = FALSE, fileEncoding = "UTF-8")
+cat(sprintf("dropped %d log URLs on another agency's host:\n", length(dropped))); cat(paste0("  ", dropped, "\n"), sep = "")
 cat(sprintf("agencies.csv: %d rows, %d agencies, %d with a log URL; statuses:\n", nrow(out), length(unique(out$agency_slug)), sum(nzchar(out$disclosure_log_url))))
 print(table(out$status))
