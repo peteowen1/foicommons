@@ -28,7 +28,8 @@ that started the repo).
   not outlive its Claude session); relaunched 21:06 as a detached Windows process. Resume the same way
   (PowerShell): `Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='"C:/Program Files/Git/bin/bash.exe" -lc "cd /c/dev/foicommons && ./run_full.sh >> data/logs/harvest.log 2>&1"'}`.
   Check it is alive with `tasklist | grep Rscript`, not Git Bash `ps` (which can't see Rscript.exe).
-  Estimate 12-25 hours; tens of GB. Phase 2 of the run: fallback discovery for agencies with no log found.
+  Estimate 12-25 hours; tens of GB. **Checked 8 October 13:14: alive, 92 of 155 logs complete (at Treasury),
+  65 GB in `data/raw`, no log stopped on a block.** Phase 2 of the run: fallback discovery for agencies with no log found.
 - **Extraction.** pdfplumber over the 49 table-bearing phase 1 documents: 1,038 numeric tables
   (`data/extract/tables_index.csv`). Vision transcription over the 13 unruled documents: 21 tables,
   17 pass every check, 4 flagged for source totals that don't add up (one re-checked against the
