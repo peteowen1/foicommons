@@ -70,6 +70,13 @@ that started the repo).
    confirmed by printed totals, 16 text-layer false alarms (12/13-044 slides), 3 rounding, 61 OCR-only (278 cells,
    nothing to sum against), 49 sum gaps (28 are the 12/13-037 quirk: printed totals omit Family Supplement).
    Loose agent tolerances were tightened to the smallest passing value. 5 research tables in `skipped/`.
+   **Blind re-read done 8 October (~0.9M tokens): 0 misreadings in a random 60 of the 278 OCR-only cells**,
+   and 86 of 87 checkable cells in off-total tables agree, so those gaps are in the source documents. 116 cells
+   added to `vision/confirmations.csv`. Verify: 719 of 896 tables pass. Left: `11_12-044__52 p17` Grants
+   Unexpended (three readings: 83,065 / 89,065 / 63,065; handwritten 147,121 implies 84,065) needs a human
+   look; 6 cells in tables split across pages 5-6 (12/13-037 foi_20037-3 p5 t4, t12) were never re-read because
+   the re-read only got page 5. Lesson: a blind item must name the row by all its text cells and include every
+   page the table spans, or the reader answers a different row.
    After all: one blind re-read round for flags (as batch 1), set
    rounding tol on wave-1 tables, mark `10/11-015 doc7 p13` a copy of doc5 p11, look at
    `10/11-015 doc4 p10` (total 1,105,715 vs rows 1,817,917) and `10/11-041 document5` (sideways, totals short), `11_12-044__52 p17` (fitted cell reverted, sum flagged),
