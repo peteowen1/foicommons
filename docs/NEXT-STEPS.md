@@ -1,7 +1,7 @@
 # NEXT-STEPS
 
-Living queue for foicommons. Read this first. Last updated 7 October 2026 (end of the session
-that started the repo).
+Living queue for foicommons. Read this first. Last updated 8 October 2026 (end of the wayback
+extraction session).
 
 ## Needs Pete
 
@@ -42,7 +42,7 @@ that started the repo).
 1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic
    error and 3 unresolvable blurry averages (see the plan's status lines). FOI LEX 55799 clean table:
    5,040 rows, every identity passes. Left: open the first PR to `main` once there is a `main` branch.
-2. **Internet Archive history: DSS recovered, triage NEXT (8 October).** `R/wayback.R` (pages -> parse ->
+2. **Internet Archive history: DSS recovered and extracted (8 October); other agencies next.** `R/wayback.R` (pages -> parse ->
    files -> size). 670 files recovered from the old DSS log (2010-11 to 2024; 990 MB; manifest
    `data/manifest_dss_wayback.csv`). Survey (`scripts/survey.py` -> `data/survey/survey_dss_wayback.csv`):
    555 scanned (6,886 pages), 17 with text tables -> 393 numeric tables via pdfplumber (done).
@@ -73,7 +73,8 @@ that started the repo).
    Loose agent tolerances were tightened to the smallest passing value. 5 research tables in `skipped/`.
    **Blind re-read done 8 October (~0.9M tokens): 0 misreadings in a random 60 of the 278 OCR-only cells**,
    and 86 of 87 checkable cells in off-total tables agree, so those gaps are in the source documents. 116 cells
-   added to `vision/confirmations.csv`. Verify: 719 of 896 tables pass. `11_12-044__52 p17` Grants Unexpended
+   added to `vision/confirmations.csv`. Verify after that: wayback 392 of 556 tables pass (164 flagged, all
+   explained in `flag_sort.csv`); whole vision set 719 of 896. `11_12-044__52 p17` Grants Unexpended
    resolved by Pete: (83,065) as printed; the total not reconciling is the source. The 6 cells in tables split across
    pages 5-6 (12/13-037 foi_20037-3 p5 t4, t12) were re-read with both pages: all agree.
    Lesson: a blind item must name the row by all its text cells and include every page the table spans,
@@ -102,7 +103,12 @@ that started the repo).
    placeholder); Newstart totals for 2007-2012 to turn the FOI 19/20-073 partial-capacity counts into
    shares. (Coronavirus Supplement start date of 27 April 2020 confirmed against the Parliamentary Library, 7 October.)
 6. **Chart-reading pass**: data-labelled charts skipped by the table pass (NDIS survey charts in
-   FOI 2021-064, 1800RESPECT stats in 16/17-082).
+   FOI 2021-064, 1800RESPECT stats in 16/17-082); plus up to 274 wayback chart pages (a few in duplicate copies) in
+   `scanned_wayback/triage.json` (kind "chart"; one chart already transcribed as a table: 10/11-059
+   59_doc2 p124 t1).
+7. **Research-table sweep** (deferred by Pete 8 October): D520 (23 pages), 2 maybes tagged `out_of_scope` in
+   `scanned_wayback/triage.json`, and 5 tables logged in `scanned_wayback/skipped/*.csv`. No printed totals,
+   so checks are OCR-only; ~0.6M Sonnet tokens.
 
 ## Deliberately not done
 
