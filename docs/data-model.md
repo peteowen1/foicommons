@@ -123,6 +123,37 @@ Survey source: `data/survey/survey_phase1.csv`, `survey_agencies.csv`, `survey_d
 
 Vision tables only: pdfplumber "titles" are usually a data row.
 
+### facts (→ tables) — one row per number, with its breakdowns
+Built by `python -P scripts/build_facts.py` after `build_catalogue.py`; vision (checked) tables only so far.
+Rules agreed with Pete on 8 October 2026: a period not in any column is taken from the title (`period_from`
+says where it came from); derived numbers the agency printed are kept and marked; suppressed or nil cells get
+a blank `value`, the printed text in `value_raw` and a `flag`, never 0; tagged breakdowns use shared names;
+modelled numbers are kept with `kind = modelled`. Tables with a cleaned version (`scripts/clean_*.py`, listed
+in `CLEAN` in build_facts.py) contribute facts from the clean table instead of their raw pages.
+
+| column | meaning |
+|---|---|
+| fact_id | table_id:csv line:column position (or `clean:<file>:<line>:<column>`) |
+| table_id, csv_line, column | where the number sits |
+| measure | what is counted, from the column name with periods and stat words removed (rule-based, not standardised across tables) |
+| stat | `value`, `percent`, `pct change`, `difference` |
+| derived | `yes` when the agency computed it from other numbers (% of total, % change, difference, a total of parts) |
+| is_total | `yes` on printed total rows or columns: exclude before summing |
+| period, period_type, period_from | e.g. `2019-20` / financial_year / column name; `2011-06` / month / title; `2019-20 to 2020-21` / change |
+| geography, geography_type | state, lga or electorate value and which |
+| category, category_type | the main row breakdown (shared name such as payment_type, else the table's column name) |
+| other_dims | further breakdowns as `name=value; ...` (e.g. `sector=School; group=Age; category=Under 18`) |
+| value | the number, cleaned (no $ , %; brackets made negative) |
+| value_raw | as printed |
+| flag | `nil` (printed -), `blank`, `redacted`, `not published`, `below threshold` (<5, <1%), `text` |
+| unit | `%` for percentages, otherwise from the table's units |
+| kind | `reported` or `modelled` (worked examples, projections, policy scenarios) |
+| check_status | the table's checker status |
+
+State on 8 October 2026: 62,411 facts from 886 of 896 vision tables; 57,640 with a value. Known gaps: 21,555
+facts have no period, mostly 109 FOI LEX 55799 tables outside the clean table (month is in the page header)
+and the 12/13-037 policy scenarios (no period by nature); `measure` wording varies table to table.
+
 ## Queries
 
 ```sql
@@ -152,5 +183,5 @@ JOIN logs l USING (log_slug) JOIN agencies a USING (agency_slug) GROUP BY 1 ORDE
 - One FOI reference holds a broken character from the source manifest (`19/20-001 �`).
 - Dimension tags are rule-based. They catch the common breakdowns; LGA and electorate rules need a reference
   list of names to be complete.
-- Wide tables (years in column names, 1,418 such columns) are not reshaped. A `facts` layer, one row per
-  number with its breakdowns, is the next step and will be designed on real tables first.
+- Wide tables are reshaped only in `facts`, and only for vision tables so far; pdfplumber tables (7,506, no
+  independent check) are not in `facts` yet.
