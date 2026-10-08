@@ -285,7 +285,11 @@ def pdfplumber_facts():
             no_header += 1
             names = [f"col_{j + 1}" for j in range(width)]
         else:
-            names = [snake(" ".join(grid[r][j] for r in range(h) if grid[r][j].strip())) or f"col_{j + 1}" for j in range(width)]
+            # a header row of bare spreadsheet letters (A, B, C ... AA) sits above the real heading in some
+            # exported tables; merged in, it made columns "o" and "k" instead of "3 yrs" (Haiku re-check, 8 Oct 2026)
+            letters = lambda r: all(re.fullmatch(r"[A-Z]{1,2}", c.strip()) for c in r if c.strip()) and any(c.strip() for c in r)
+            hdr = [r for r in range(h) if not letters(grid[r])]
+            names = [snake(" ".join(grid[r][j] for r in hdr if grid[r][j].strip())) or f"col_{j + 1}" for j in range(width)]
         seen = Counter()
         for j, n in enumerate(names):   # duplicate header text ("2019", "2019") must stay separate columns
             seen[n] += 1
