@@ -54,7 +54,7 @@ def period_in_name(name):
     if m:
         y = m.group(2); y = y if len(y) == 4 else "20" + y
         return f"{y}-{MONTH_NUM[m.group(1)[:3]]:02d}", "month", n.replace(m.group(0), " ")
-    m = re.search(r"(?<![a-z0-9])(?<!system_)((?:19|20)\d\d)(?!\d)", n)
+    m = re.search(r"(?:(?<![a-z0-9])|(?<=\by)|(?<=\bfy))(?<!system_)((?:19|20)\d\d)(?!\d)", n)   # 2010, y2010, fy2010
     if m and not re.search(r"system", n):
         return m.group(1), "year", n.replace(m.group(0), " ")
     return "", "", n
@@ -106,6 +106,25 @@ def parse_value(raw):
     if re.fullmatch(r"-?\d+(\.\d+)?", v):
         return ("-" + v if neg and not v.startswith("-") else v), ""
     return "", "text"
+
+
+PAYMENT_COL = re.compile(r"jobseeker|newstart|youth_allowance|austudy|abstudy|\baic\b|^aic|age_pension|\bdsp\b|"
+                         r"disability_support|carer_payment|carer_allowance|parenting_payment|ftb|family_tax|"
+                         r"rent_assistance|special_benefit|sickness_allowance|widow|partner_allowance|"
+                         r"mobility_allowance|newstart|pension|allowance|supplement", re.I)
+GENERIC = {"", "measure", "value", "amount", "total", "number", "count", "pct", "percent", "per cent", "rate"}
+
+
+def measure_from_units(units):
+    """The measure when the column name does not carry one: from the table's units ("number of recipients
+    (rounded to 5); ..." -> "recipients", "$ million (...)" -> "amount")."""
+    u = re.split(r"[;(]", units or "")[0].strip().lower()
+    u = re.sub(r"^(the\s+)?(number|count|no\.?)\s+of\s+", "", u)
+    if not u or re.match(r"^\$|^(a)?\$|dollars|^\$?'?000|million|^aud", u):
+        return "amount"
+    if re.match(r"^(%|per ?cent|percent)", u):
+        return "percent"
+    return u[:60]
 
 
 def measure_of(rest):
@@ -169,7 +188,9 @@ def main():
                 elif d in PERIOD and not row_period:
                     row_period, row_ptype = (fy(v) or v), d
                 elif not dims["category"]:
-                    dims["category"], dims["category_type"] = v, (d if d in SHARED else c["column"])
+                    # a column the agents called payment / payment_name / payment_type is the shared payment_type
+                    ct = d if d in SHARED else ("payment_type" if re.fullmatch(r"payment(_name|_type)?", c["column"].lower()) else c["column"])
+                    dims["category"], dims["category_type"] = v, ct
                 elif v:
                     other.append(f"{d if d in SHARED else c['column']}={v}")
             dims["other_dims"] = "; ".join(other)
@@ -191,19 +212,29 @@ def main():
                     period, ptype, pfrom = " to ".join(fy(x) for x in re.findall(FY, t["title"])[:2]), "change", "title"
                 scen = re.search(r"((?:19|20)\d\d)_?system|system_((?:19|20)\d\d)", c["column"].lower())
                 cat, cat_type = dims["category"], dims["category_type"]
+                extra = dims["other_dims"]
+                measure = "amount" if scen else measure_of(rest)
+                if not scen and PAYMENT_COL.search(c["column"]) and cat_type != "payment_type":
+                    # the column is a payment (austudy, youth_allowance_total): a breakdown, not the measure
+                    if cat:
+                        extra = "; ".join(x for x in (f"{cat_type}={cat}", extra) if x)
+                    cat, cat_type = c["column"], "payment_type"
+                    measure = ""
+                if measure in GENERIC or re.fullmatch(r"[\d\s]+", measure or ""):
+                    measure = measure_from_units(t["units"])
                 if scen:   # 12/13-037 style: the column is a policy scenario, not a period
                     other_s = f"scenario={(scen.group(1) or scen.group(2))} system"
                 else:
                     other_s = ""
                 out.append({
                     "fact_id": f"{tid}:{i}:{c['position']}", "table_id": tid, "csv_line": i, "column": c["column"],
-                    "measure": "amount" if scen else (measure_of(rest) or measure_of(c["column"])), "stat": stat,
+                    "measure": measure, "stat": stat,
                     "derived": "yes" if derived else "",
                     "is_total": "yes" if re.search(r"\btotal\b", row_label) or re.search(r"(^|_)total($|_)", c["column"].lower()) else "",
                     "period": period, "period_type": ptype, "period_from": pfrom,
                     "geography": dims["geography"], "geography_type": dims["geography_type"],
                     "category": cat, "category_type": cat_type,
-                    "other_dims": "; ".join(x for x in (dims["other_dims"], other_s) if x),
+                    "other_dims": "; ".join(x for x in (extra, other_s) if x),
                     "value": val, "value_raw": raw, "flag": flag, "unit": unit or unit_default,
                     "kind": "modelled" if modelled or scen else "reported", "check_status": t["check_status"],
                 })
