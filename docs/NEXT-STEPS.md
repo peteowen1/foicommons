@@ -48,8 +48,16 @@ extraction session).
 - **Catalogue and data model (8 October).** `python -P scripts/build_catalogue.py` rebuilds `data/catalogue/`
   (agencies, logs, requests, document_sources, documents keyed by sha256, tables, columns = data dictionary,
   series) and `catalogue.duckdb` with a `table_lineage` view. Meaning of every column: `docs/data-model.md`.
-  Rebuild after each harvest, survey or extraction run. Next: the `facts` layer (one row per number with
-  its breakdowns), designed with Pete on real tables first.
+  Rebuild after each harvest, survey or extraction run, then `python -P scripts/build_facts.py`: `facts` is one
+  row per number with its breakdowns (rules agreed with Pete on real tables, 8 October). 62,411 facts from 886
+  vision tables. Open items, in order:
+  1. pdfplumber tables (7,506, text layer, no independent check) are not in `facts` yet; their first row is
+     often data, so header detection comes first.
+  2. 82 of 731 tables have measure names found in neither title nor units: one Haiku tidy pass over
+     everything still unclear AFTER the harvest is extracted (Pete, 8 October: one pass, not two).
+  3. 109 FOI LEX 55799 tables outside the clean table have no month (it is in the page header).
+  4. Needs Pete: Director of National Parks shares DCCEEW's log, so 785 documents count under both agencies
+     in per-agency totals. Recommendation: fold Parks into DCCEEW for counting.
 
 ## Queue (ranked)
 
