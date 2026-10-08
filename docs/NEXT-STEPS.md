@@ -37,6 +37,15 @@ extraction session).
 - **Analysis.** `analyses/jobseeker-deaths/`: FINDINGS.md, `rebuild.py` (20 asserted figures, all pass).
 - **Rights.** `docs/rights.md`: publish extracted figures + links; keep PDFs private; takedown on request.
 
+- **Registry has wrong log URLs (found 8 October 15:40).** Discovery keeps every disclosure-log link on an
+  agency's FOI page, including links to OTHER agencies' logs: ANAO -> PMC, Treasury and Infrastructure logs
+  (its "FOI page" is an audit report about FOI at several departments), ARENA -> DCCEEW. DTA points at a
+  pre-production site (beta-dta-5.preprod.govcms.gov.au). Effect: 2,517 of 12,980 surveyed files (19%) are
+  duplicate downloads, and Treasury is being harvested twice. `R/build_registry.R` runs again after this pass
+  (run_full.sh step 3) and would put the bad rows back. Fix: drop log URLs on another agency's host, with an
+  allowlist for the 7 legitimate cases (cer.gov.au x3, nzea.gov.au, publichospitalfunding.gov.au, two
+  webarchive.nla.gov.au archives); dedupe documents by sha256 in every count.
+
 ## Queue (ranked)
 
 1. **Scanned batch: done and reviewed 7 October.** 308 tables, 306 pass; 2 flags are a source arithmetic
