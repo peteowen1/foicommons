@@ -30,18 +30,22 @@ EXTRA_LOGS = {"dss-wayback": ("department-of-social-services", "Internet Archive
 
 
 def iso_date(raw):
-    """release_date as written by each log ("6 July 2022", "27/07/11", "2019-08-15") -> YYYY-MM-DD, or ""."""
+    """release_date as written by each log ("6 July 2022", "27/07/11", "2019-08-15") -> YYYY-MM-DD, YYYY-MM when only
+    the month is given ("July 2022"), or ""."""
     from datetime import datetime
     t = re.sub(r"(?<=\d)(st|nd|rd|th)\b", "", (raw or "").strip())
     four = bool(re.search(r"(19|20)\d\d", t))   # %Y also accepts "02" as year 2: only try it when 4 digits are there
-    fmts = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%d/%m/%Y", "%B %Y", "%d.%m.%Y", "%Y-%m-%dT%H:%M:%SZ") if four else ("%d/%m/%y",)
+    fmts = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%d/%m/%Y", "%B %Y", "%b %Y", "%d.%m.%Y", "%Y-%m-%dT%H:%M:%SZ") if four else ("%d/%m/%y",)
     for f in fmts:
         try:
             d = datetime.strptime(t, f)
         except ValueError:
             continue
         # the FOI Act began in 1982; anything outside 1982..today is a misparse, not a date
-        return d.strftime("%Y-%m-%d") if 1982 <= d.year and d <= datetime.now() else ""
+        if not (1982 <= d.year and d <= datetime.now()):
+            return ""
+        # a log that gives only the month ("July 2022") gets YYYY-MM, not a made-up day 01 (squad seed 15)
+        return d.strftime("%Y-%m") if f in ("%B %Y", "%b %Y") else d.strftime("%Y-%m-%d")
     return ""
 
 

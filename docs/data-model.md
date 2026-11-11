@@ -70,7 +70,7 @@ Phase 1 sources are mapped onto logs: `dss` and `dss_detail` -> `dss-main`, `ser
 | title | what was requested: phase 1's parsed title; for agency logs, the document row's own parsed field ("Description of Documents", "Scope of Request", "Subject", DFAT's "FOI request" ...) from `fields_json`, or from the card text when the log is laid out as cards; else the log entry's text. Blank when the log gives only a page heading |
 | log_section | the page heading the entry sits under ("FOI disclosure log 2025", "Disclosure Log 2023 (July to December)") when that was all the log gave as a title |
 | release_date | as printed; formats vary |
-| release_date_iso | YYYY-MM-DD; blank when absent or not a real date (outside 1982..today, e.g. "2025-26-26", "6 May 1958") |
+| release_date_iso | YYYY-MM-DD, or YYYY-MM when the log gives only the month; blank when absent or not a real date (outside 1982..today, e.g. "2025-26-26", "6 May 1958") |
 | log_slug | → logs |
 | decision | access decision where the log gives one |
 | n_documents | unique documents downloaded for it; 0 = released by email, not online, or not downloaded |
