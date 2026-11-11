@@ -73,6 +73,7 @@ Phase 1 sources are mapped onto logs: `dss` and `dss_detail` -> `dss-main`, `ser
 | release_date_iso | YYYY-MM-DD, or YYYY-MM when the log gives only the month; blank when absent or not a real date (outside 1982..today, e.g. "2025-26-26", "6 May 1958") |
 | log_slug | → logs |
 | decision | access decision where the log gives one |
+| decision_std | `decision` as one of full / partial / refused (includes "exempt") / withdrawn / transferred / no documents; blank when absent or not a decision (link text, cut-off sentences) |
 | n_documents | unique documents downloaded for it; 0 = released by email, not online, or not downloaded |
 
 ### document_sources (→ requests, → documents)

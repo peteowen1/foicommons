@@ -49,6 +49,23 @@ def iso_date(raw):
     return ""
 
 
+# decision as written -> one of six values; anything else (link text, sentences cut at the word "Decision") is
+# not a decision and gets "" (11 November 2026: 185 spellings, of which ~25 were real decisions)
+DECISION_STD = [
+    ("partial", re.compile(r"^(released in part|partial(ly)? (release|access)|partial)\b", re.I)),
+    ("full", re.compile(r"^(released? in full|full(y)? (release|access)|access granted)$", re.I)),
+    ("refused", re.compile(r"^(refus(ed|al)|access refused|exempt)$", re.I)),
+    ("withdrawn", re.compile(r"^withdrawn$", re.I)),
+    ("transferred", re.compile(r"^transferred$", re.I)),
+    ("no documents", re.compile(r"^no documents\b", re.I)),
+]
+
+
+def decision_std(raw):
+    t = (raw or "").strip()
+    return next((v for v, rx in DECISION_STD if rx.search(t)), "")
+
+
 FIELD_RULES = [   # (what, field-name pattern); first matching field wins. Names seen across 9,231 parsed rows.
     ("reference", re.compile(r"^disclosure log (number|no\.?)$|^(foi\s*)?(reference|ref)(\s*(no\.?|number))?$|^foi(\s*(request|no\.?|number|ref\.?))?$|^(foi\s*)?reference number$|^request (id|number)$", re.I)),
     ("title", re.compile(r"description|scope|summary|^details?$|subject|^request$|title|documents? (released|provided|published)$", re.I)),
@@ -312,7 +329,7 @@ def main():
             ref = re.sub(r"[^A-Z0-9]", "", reference.upper())
             rid = short_id(log, ref) if ref else short_id(log, key)
             requests.setdefault(rid, {"request_id": rid, "log_slug": log, "foi_reference": reference.strip(),
-                                      "title": title.strip()[:300], "log_section": section, "release_date": release, "release_date_iso": iso_date(release), "decision": decision})
+                                      "title": title.strip()[:300], "log_section": section, "release_date": release, "release_date_iso": iso_date(release), "decision": decision, "decision_std": decision_std(decision)})
             if not has_file or ("log_slug" in r and r.get("link_type") != "document"):
                 continue          # the request is kept even when its documents were not released online
             sources.append({"request_id": rid, "doc_id": r["sha256"], "log_slug": log, "local_path": rel(r["local_path"]),
@@ -433,7 +450,7 @@ def main():
     print(f"catalogue -> {OUT}" + (f" (log {a.log} only)" if a.log else ""))
     write("agencies", list(agencies.values()), ["agency_slug", "agency", "portfolio", "website", "type_of_body", "staff_asl", "agor_id", "foi_page_url"])
     write("logs", list(logs.values()), ["log_slug", "agency_slug", "log_url", "discovery_status", "how_found", "robots_ok", "harvest_status", "harvested_at", "n_requests", "note"])
-    write("requests", list(requests.values()), ["request_id", "log_slug", "foi_reference", "title", "log_section", "release_date", "release_date_iso", "decision", "n_documents"])
+    write("requests", list(requests.values()), ["request_id", "log_slug", "foi_reference", "title", "log_section", "release_date", "release_date_iso", "decision", "decision_std", "n_documents"])
     write("document_sources", sources, ["request_id", "doc_id", "log_slug", "local_path", "doc_url", "bytes"])
     write("documents", list(documents.values()), ["doc_id", "ext", "bytes", "pages", "scanned_pages", "text_table_lines", "class", "n_tables", "n_sources", "example_path"])
     write("tables", tables, ["table_id", "doc_id", "method", "pages", "table_n", "title", "caption", "units", "n_rows", "n_cols", "check_status", "csv_path"])
