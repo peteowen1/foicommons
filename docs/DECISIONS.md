@@ -2,6 +2,12 @@
 
 Decisions for foicommons, newest first. Queue: `docs/NEXT-STEPS.md`.
 
+## November 2026
+
+- **Director of National Parks folded into DCCEEW** (Pete, 11 November): it lists DCCEEW's log, which was
+  harvested twice. `SHARED_LOGS` in `scripts/build_catalogue.py` counts it once; 855 duplicate requests gone
+  (13,175 -> 12,320), documents unchanged at 14,312. A new shared log stops the build until it gets an owner.
+
 ## Deliberately not done
 
 - **Right to Know scraping**: house rules ban unapproved automation; paused pending permission

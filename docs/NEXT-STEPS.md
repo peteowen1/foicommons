@@ -26,8 +26,6 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
   contact form. Until they say yes, no automated access to righttoknow.org.au.
 - [ ] OPEN **Jericho post prose**: `C:\dev\inthegame-blog\blog\2026-10-07-jobseeker-deaths\index.qmd`
   (`draft: true`). Preview: `quarto preview --no-browser --port 4848 -M draft:false`.
-- [ ] OPEN **Director of National Parks** shares DCCEEW's log, so 785 documents count under both.
-  Recommendation: fold Parks into DCCEEW for counting.
 
 ## Queue (ranked)
 

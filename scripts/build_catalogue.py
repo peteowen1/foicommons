@@ -22,6 +22,9 @@ OUT = f"{DATA}/catalogue"
 # Phase 1 scrapers wrote their own manifests before the registry existed: say which log each one belongs to.
 OLD_SOURCES = {"dss": "dss-main", "dss_detail": "dss-main", "dss_wayback": "dss-wayback",
                "servicesaustralia": "servicesaustralia-log"}
+# A disclosure log listed by several agencies -> the agency it is counted under (Pete, 11 November 2026).
+SHARED_LOGS = {"https://www.dcceew.gov.au/about/reporting/freedom-of-information/disclosure-log":
+               "department-of-climate-change-energy-the-environment-and-wate"}
 EXTRA_LOGS = {"dss-wayback": ("department-of-social-services", "Internet Archive copies of the old DSS disclosure log "
                               "(2010-11 to 2024), recovered by R/wayback.R")}
 
@@ -246,6 +249,24 @@ def main():
                      f"log host {h} is not {l['agency_slug']}'s site and matches no agency") + ("; " + l["note"] if l["note"] else "")
         if owner:
             l["agency_slug"] = owner
+    # Two agencies can list the same disclosure log (Director of National Parks lists DCCEEW's), so the same
+    # page was harvested twice. Count it once, under the owner in SHARED_LOGS; the other harvest stays in
+    # `logs` with a note and contributes no requests. A new shared log without a decision stops the build.
+    by_url = defaultdict(list)
+    for l in logs.values():
+        by_url[l["log_url"].rstrip("/").lower()].append(l)
+    duplicate_logs = {}
+    for u, ls in by_url.items():
+        if len(ls) < 2:
+            continue
+        owner = SHARED_LOGS.get(u)
+        if owner not in {l["agency_slug"] for l in ls}:
+            sys.exit(f"log {u} is listed by {sorted(l['log_slug'] for l in ls)}: add its owning agency to SHARED_LOGS")
+        keep = next(l for l in ls if l["agency_slug"] == owner)
+        for l in ls:
+            if l is not keep:
+                duplicate_logs[l["log_slug"]] = keep["log_slug"]
+                l["note"] = f"same log as {keep['log_slug']}, counted there" + ("; " + l["note"] if l["note"] else "")
     for slug, (ag, note) in EXTRA_LOGS.items():
         logs[slug] = {"log_slug": slug, "agency_slug": ag, "log_url": "web.archive.org", "discovery_status": "wayback",
                       "harvest_status": "complete", "note": note}
@@ -263,6 +284,8 @@ def main():
             reference = r.get("reference", "")
             if "log_slug" in r:   # all-agency harvest layout
                 log = OLD_SOURCES.get(r["log_slug"], r["log_slug"]); key = r["item_id"] or r["detail_url"] or r["title"]
+                if log in duplicate_logs:
+                    continue      # a second harvest of another agency's log (SHARED_LOGS)
                 title = r["title"] or r["item_text"][:200]; release = r["date_detected"]; decision = r["decision"]
                 # Where the log is a table, the harvester parsed each document's own row into fields_json (its FOI
                 # reference, description, date, decision). Use it: r["title"] is the page section ("Disclosure Log
