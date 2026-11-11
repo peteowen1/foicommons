@@ -15,7 +15,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
   `tar --force-local --exclude='*.png' -czf <dated>.tar.gz -C data extract` then
   `gh release upload extract-backup <file>`. Never make it public (`docs/rights.md`).
 - **Analysis**: `analyses/jobseeker-deaths/` (`rebuild.py`, 20 asserted figures).
-- **Checks**: Haiku check squad after each chunk of work (see `CLAUDE.md`). Last run: seed 14, 9 October.
+- **Checks**: Haiku check squad after each chunk of work (see `CLAUDE.md`). Last run: seed 15, 11 November.
 
 ## Needs Pete
 
@@ -29,14 +29,24 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 
 ## Queue (ranked)
 
-1. OPEN **Text-layer grid quality.** Seed 14 found new-agency grids match the printed page for only 27 of 40
-   sampled values (DSS: 72 of 74). Not verified. Done when: a checked sample says whether `labelled` needs a
-   quality gate before publishing, and the gate exists if so.
-2. OPEN **One Haiku pass over unnamed tables** (Pete, 8 October: one pass). Trigger fired: harvest extracted.
-   Covers the vision tables with unclear measure names and the `context needed` text-layer tables (602,642
-   facts in 8,683 tables). Do after item 1, so the pass doesn't name bad grids.
-3. OPEN **Scale vision**: count scanned pages needing vision (6,476 scanned PDFs in the survey) and price the
-   Claude API batch interface per page. Done when: a page count and cost estimate are in this file for Pete.
+1. OPEN **Name the unnamed tables: one Haiku pass** (Pete, 8 October: one pass). Trigger fired: harvest
+   extracted. Grid digits are fine: seed 15 (11 November) found 40 of 40 labelled values right (32 checked
+   against the page; a script also found all 40 printed on their pages), so the 27 of 40 on 9 October was the
+   csv_line bug fixed that day. Meaning is the gap: 29 of 40 measure names vague or wrong, plus the
+   `context needed` tables (602,642 facts in 8,683). Use `Explore`-type Haiku agents in slices of 10 (memory:
+   default agents thrash). Done when: every `labelled`/`context needed` table has a measure name and units.
+2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified): vision
+   item 12 records a cohort label ("1996") as the value; item 10 units say "recipients" for average earnings;
+   item 16 "$" units on an activity code; periods null where the page header gives a date ("As at 26/12/2025",
+   items 5 and 8). Scripts: 4 new (blocked-host second writer, wayback basename skip, swallowed `kept_groups`
+   error, unread `.hv$fail`), 15 still open. Catalogue: 52 logs with 0 requests, 239 raw dates not parsed.
+   Done when: each is verified against the page or code and fixed or struck.
+3. OPEN **Scale vision: decide with Pete.** Counted 11 November: 6,476 scanned files = 4,355 unique PDFs,
+   171,891 pages (166 documents over 200 pages hold 73,103 of them; median 8 pages). At DSS wayback rates
+   (triage ~350 Haiku tokens/page; 10% of pages flagged; ~20k Sonnet tokens per transcribed page): triage
+   ~60M Haiku tokens, transcription ~17,000 pages ~340M Sonnet tokens. The 10% is DSS-only (unverified for
+   other agencies): pilot triage on one agency's 1,000 pages first. Batch API halves the cost but is API
+   billing, not session quota.
 4. OPEN **Small data fixes**: 109 FOI LEX 55799 tables without a month (it is in the page header);
    month-only release dates become day 01 (140 requests); 185 raw spellings of the decision field;
    `review_samples.py` never samples 21 `tNN_title` vision tables; WGEA registry URL points at its IPS page
