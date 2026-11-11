@@ -149,7 +149,7 @@ in `CLEAN` in build_facts.py) contribute facts from the clean table instead of t
 | stat | `value`, `percent`, `pct change`, `difference` |
 | derived | `yes` when the agency computed it from other numbers (% of total, % change, difference), judged from the column name. Printed totals are marked by `is_total`, not here |
 | is_total | `yes` on printed total rows or columns: exclude before summing |
-| period, period_type, period_from | e.g. `2019-20` / financial_year / column name; `2011-06` / month / title; `2006-06-30` / date; `2019-20 to 2020-21` / change. period_from is `column name`, `row label`, `title`, `units` or `clean table`; blank when no period is known. A bare year column follows the table's June wording: "year ended 30 June 2010" is 2009-10, "at 30 June 2006" is the date 2006-06-30 |
+| period, period_type, period_from | e.g. `2019-20` / financial_year / column name; `2011-06` / month / title; `2006-06-30` / date; `2019-20 to 2020-21` / change. period_from is `column name`, `row label`, `title`, `units`, `clean table` or `naming pass`; blank when no period is known. A bare year column follows the table's June wording: "year ended 30 June 2010" is 2009-10, "at 30 June 2006" is the date 2006-06-30 |
 | geography, geography_type | state, lga or electorate value and which |
 | category, category_type | the main row breakdown (shared name such as payment_type, else the table's column name) |
 | other_dims | further breakdowns as `name=value; ...` (e.g. `sector=School; group=Age; category=Under 18`) |
@@ -170,7 +170,8 @@ tables. `labelled` 569,869 (114,132 named from printed headings), `inferred` 220
 `context needed` 172,871, `checked` 59,910; 96,509 facts dropped from 2,137 tables judged not statistics
 (codes, forms, registers). Sonnet spot-check of 20 (`data/reviews/naming_check/sample_1111.json`): printed
 5 right / 3 partly / 0 wrong of 8; inferred 2 / 5 / 1 of 8; not statistics 4 of 4 right. Weak cases are bad
-grids and grids split from their heading. The pass's periods are in names.csv but not yet in facts.
+grids and grids split from their heading. 31,272 facts with no period take the pass's period (`period_from = naming pass`) when it is one single
+period; spans, lists and quarters are refused (`named_period` in build_facts.py).
 Before the pass (9 October counts):
 - `checked` (vision): 59,966 facts from 876 tables. The 62,411 recorded on 8 October at 17:36 counted the
   10 model-comparison pilot tables a second time (excluded from the catalogue since).

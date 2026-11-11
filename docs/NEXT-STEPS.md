@@ -31,10 +31,9 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 
 1. OPEN **Naming pass follow-ups.** Pass done 11 November (8,698 of 8,698 tables, ~48M Haiku tokens, 59 min,
    run `wf_eb4e574c-7d3`; names in `data/naming/names.csv`, loaded by `apply_names` in `build_facts.py`;
-   counts and the 20-table Sonnet check in `docs/data-model.md`). Left: periods from names.csv into facts
-   (4,663 tables give one; parse to period_type); 510 value columns with no measure; tables judged not
+   counts and the 20-table Sonnet check in `docs/data-model.md`). Periods loaded (31,272 facts). Left: 510 value columns with no measure; tables judged not
    statistics were dropped on Haiku's word (4 of 4 right in the check; 2,137 tables, 96,509 facts): sample 20
-   more before publishing. Done when: periods loaded and a second check of 20 `labelled` named facts passes.
+   more before publishing. Done when: a second check of 20 `labelled` named facts passes.
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",

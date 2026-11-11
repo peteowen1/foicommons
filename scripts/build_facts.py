@@ -360,6 +360,22 @@ NAMES = f"{ROOT}/data/naming/names.csv"
 NO_UNIT = {"", "unknown", "none", "n/a", "code"}
 
 
+def named_period(s):
+    """One period from the naming pass's free text, or ("", ""). Anything that reads as a span or a list is
+    refused: period_in_title took "Jan - Mar 2012" for March and "2021-22 and 2022-23 (to 31 March 2023)" for
+    March 2023 (11 November 2026). "Year ended 30 June 2020" is the financial year 2019-20. Quarters
+    are refused rather than widened to a year."""
+    s = s.replace("�", "-").strip()
+    m = re.fullmatch(r"(?:for the )?(?:financial )?year end(?:ed|ing) 30 june ((?:19|20)\d\d)", s.lower())
+    if m:
+        y = int(m.group(1))
+        return f"{y - 1}-{y % 100:02d}", "financial_year"
+    no_fy = re.sub(FY, " ", s)
+    if re.search(r"\b(to|and|since|from|until|between|through|vs|versus|or|by|current|present|ongoing|date|q[1-4])\b|[;,&]|\s[-–]\s|[a-z][-–][a-z]", no_fy, re.I):
+        return "", ""
+    return period_in_title(s)
+
+
 def apply_names(facts):
     """Name `context needed` facts from the Haiku naming pass (data/naming/names.csv; scripts/naming_load.py).
 
@@ -386,6 +402,12 @@ def apply_names(facts):
             if not f["unit"] and r["units"].strip().lower() not in NO_UNIT:
                 f["unit"] = r["units"]
             f["layout"] = "labelled" if r["source"] == "printed" else "inferred"
+            if not f["period"]:
+                # one period only: a range ("2018-19 to 2022-23") is the table's span, not this fact's period
+                p, ptype = named_period(r["period"])
+                if p:
+                    f["period"], f["period_type"], f["period_from"] = p, ptype, "naming pass"
+                    n["period from naming pass"] += 1
             f["named_by"] = f"naming pass ({r['model_id']})"
             n[f["layout"]] += 1
         else:
