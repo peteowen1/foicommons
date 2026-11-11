@@ -20,6 +20,7 @@ CAT = f"{ROOT}/data/catalogue"
 FY = r"(?:19|20)\d\d[-/–_ ]?\d\d(?!\d)"
 MONTHS = "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec"
 MONTH_NUM = {m: i for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split(), 1)}
+ID_COL = re.compile(r"^(.*_)?(code|id|cohort|postcode|abn|item_no|item_number)$")
 MODELLED = re.compile(r"projection|projected|hypothetical|illustrative|worked example|example famil|scenario|"
                       r"20\d\d system|modelled|modeled", re.I)
 SHARED = {"state", "lga", "electorate", "payment_type", "age_group", "sex", "financial_year", "year", "month"}
@@ -187,7 +188,10 @@ def emit(tid, t, cs, rows):
     if not cs:
         return out
     # a label column holds text; a column that is all nil ("-") is an empty VALUE column, not a label
-    label = [c for c in cs if c["dimension"] or (c["type"] == "label" and float(c["filled_share"] or 0) > 0)]
+    # an identifier column (cohort 1996, activity_code 59626, abn, sa2_code) names the row even though its cells
+    # are digits; ~2,000 facts were such IDs (Haiku check seed 15, 11 Nov 2026)
+    label = [c for c in cs if c["dimension"] or (c["type"] == "label" and float(c["filled_share"] or 0) > 0)
+             or (ID_COL.search(c["column"].lower()) and not re.search(r"_(of|the)_", c["column"].lower()))]
     value = [c for c in cs if c not in label]
     if not label and value:          # no label column: the first column names the rows
         label, value = [value[0]], value[1:]

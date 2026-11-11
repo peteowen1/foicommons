@@ -8,7 +8,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 - **Phase 1 archive: done.** All-agency run finished 8 October 20:43 (170/170 logs; NDIS 403 recorded).
   Survey: 19,310 files, 14,312 unique documents (count from `documents`, never raw folders; `docs/data-model.md`).
 - **Phase 2 extraction.** pdfplumber over 1,407 unique table-bearing PDFs; vision over phase 1 and DSS
-  wayback scans. `facts`: 1,169,701 from 17,377 tables (rebuilt and byte-identical 11 November).
+  wayback scans. `facts`: 1,167,916 from 17,356 tables (11 November, after identifier columns stopped counting as facts).
   Rebuild: `python -P scripts/build_catalogue.py` then `python -P scripts/build_facts.py` (~2 min).
 - **Backup**: private release `extract-backup`, latest `foicommons_extract_2026-11-11.tar.gz` (40 MB,
   136,640 files, round-trip sha256 checked). Refresh after each extraction run:
@@ -35,9 +35,9 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    csv_line bug fixed that day. Meaning is the gap: 29 of 40 measure names vague or wrong, plus the
    `context needed` tables (602,642 facts in 8,683). Use `Explore`-type Haiku agents in slices of 10 (memory:
    default agents thrash). Done when: every `labelled`/`context needed` table has a measure name and units.
-2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified): vision
-   item 12 records a cohort label ("1996") as the value; item 10 units say "recipients" for average earnings;
-   item 16 "$" units on an activity code; periods null where the page header gives a date ("As at 26/12/2025",
+2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
+   marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
+   units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
    items 5 and 8). Scripts: 4 new (blocked-host second writer, wayback basename skip, swallowed `kept_groups`
    error, unread `.hv$fail`), 15 still open. Catalogue: 52 logs with 0 requests, 239 raw dates not parsed.
    Done when: each is verified against the page or code and fixed or struck.

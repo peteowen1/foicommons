@@ -162,7 +162,7 @@ in `CLEAN` in build_facts.py) contribute facts from the clean table instead of t
 | layout | is the MEANING known: `checked` (any vision table: transcribed with a title and units and run through the checker; it does not test that the title is informative), `labelled` (text-layer table, header found, measure known), `captioned` (a printed "Table N: ..." title says what the table is, but not what each column measures), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
 
 State on 9 October 2026 (full harvest: pdfplumber over 1,407 unique table-bearing PDFs, 202,765 pages):
-1,169,701 facts from 17,377 tables.
+1,169,701 facts from 17,377 tables. 11 November: 1,167,916 from 17,356, after identifier columns (cohort, activity_code, abn, sa2_code, ...) became row labels instead of 1,785 facts.
 - `checked` (vision): 59,966 facts from 876 tables. The 62,411 recorded on 8 October at 17:36 counted the
   10 model-comparison pilot tables a second time (excluded from the catalogue since).
 - `labelled`: 459,449 facts. pdfplumber found 134,177 tables and kept 16,681 (3+ rows, 2+ columns, 30%+
