@@ -11,3 +11,10 @@ using the AIHW PHE 354 mortality data, DSS payment demographics, and FOI release
   `C:\dev\inthegame-blog\blog\2026-10-07-jobseeker-deaths\index.qmd`.
 
 Inputs live in `data/inputs/jobseeker-deaths/` (gitignored). Sources and download links are in FINDINGS.md.
+
+## Corrections made during the first session (so they aren't repeated)
+
+- The straight-line estimate of 52 deaths per 100,000 for full-capacity recipients was first called a
+  failed sense check; its 95% range (6-98) includes the non-welfare 67, and dropping 2020 gives 68.
+- The "at most 18% double counting" bound was superseded by DSS FOI 2122-068: only about half of
+  AIHW's JobSeeker deaths were on the payment at death.

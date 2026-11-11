@@ -21,9 +21,19 @@ Archive, then build a searchable database of, statistics released under the Comm
 Raw data, PDFs and manifests stay under `data/` (gitignored). CSV only, no RDS, no arrow (segfaults under Git Bash R).
 
 ## Phases
-1. Archive raw documents and manifests (running across all agencies).
+1. Archive raw documents and manifests (done for all agencies, 8 October 2026).
 2. Extract tables from the PDFs (pdfplumber + checked vision transcription; in progress).
 3. Publish (searchable database).
 
 ## Analyses
 `analyses/<name>/`: one folder per piece of analysis, with a `rebuild.py` (or `.R`) that reproduces every published number and asserts the headline figures. First: `analyses/jobseeker-deaths/`.
+
+## Gotchas
+- `pdftotext -layout` shifts rows in sparse tables; use pdfplumber or vision for tables.
+- Writing Windows paths through `sed`/Python strings mangled `\f` and `\a` into control characters
+  three times. Use forward slashes in paths written by scripts.
+- Haiku check squad: after each chunk of work, once `build_catalogue.py` and `build_facts.py` have been rerun,
+  `Workflow({name: "haiku-checks", args: {seed: <new integer>}})` (~0.7M Haiku tokens, ~4 min, read-only;
+  reports in `data/reviews/haiku_*_<seed>.md`). Verify a finding before fixing it: reports have overstated twice.
+- Long runs: launch detached (`Invoke-CimMethod Win32_Process Create`), since `nohup` dies with the Claude
+  session; check with `tasklist | grep Rscript`. `extract_tables.py --workers 8` max (12 ran out of memory).
