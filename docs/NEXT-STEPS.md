@@ -65,7 +65,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 4. OPEN **Small data fixes**:
    WGEA registry URL points at its IPS page
    (62 "documents" are mostly annual reports): point it at the disclosure-log section; open from squad run 12:
-   field labels as titles (141), 601 requests with no document row, 18/19-045 p35 column shift.
+   601 requests with no document row, 18/19-045 p35 column shift.
 5. OPEN **DSS wayback leftovers** (detail in the journal): blind re-read for flags, rounding tol on wave-1
    tables, `10/11-015 doc7 p13` copy of doc5 p11, `10/11-015 doc4 p10`, `10/11-041 document5`,
    `12_13-044 Document_2008 p41` and `p35`, `12_13-007 doc_72 p17`.

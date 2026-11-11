@@ -66,6 +66,19 @@ def decision_std(raw):
     return next((v for v, rx in DECISION_STD if rx.search(t)), "")
 
 
+NOT_TITLES = re.compile(r"^(description|document list|who we are|what we do|home|downloads?|\*)$", re.I)
+
+
+def clean_title(t):
+    """Link text and field labels that the logs put where the request's title goes (squad run 12): "Download
+    Emails from QANTAS ... as a PDF (1.36mb)" -> "Emails from QANTAS ..."; a bare label ("Description",
+    "Document list": NOPSEMA's flattened tables) or a navigation word ("Who we are") -> ""."""
+    t = (t or "").strip()
+    if re.match(r"Download\s+\S", t, re.I):   # the harvest cut some at 150 characters, mid "(1.27m"
+        t = re.sub(r"\s+as an?\s+\w+\s*\(.*$", "", t[len("Download"):].strip(), flags=re.I | re.S)
+    return "" if NOT_TITLES.match(t) else t
+
+
 FIELD_RULES = [   # (what, field-name pattern); first matching field wins. Names seen across 9,231 parsed rows.
     ("reference", re.compile(r"^disclosure log (number|no\.?)$|^(foi\s*)?(reference|ref)(\s*(no\.?|number))?$|^foi(\s*(request|no\.?|number|ref\.?))?$|^(foi\s*)?reference number$|^request (id|number)$", re.I)),
     ("title", re.compile(r"description|scope|summary|^details?$|subject|^request$|title|documents? (released|provided|published)$", re.I)),
@@ -333,6 +346,7 @@ def main():
             # a page heading ("FOI disclosure log 2025", "Disclosure Log 2023 (July to December)") is where the entry
             # sits, not what was requested: keep it as log_section and leave the title blank rather than misleading
             section = ""
+            title = clean_title(title)
             if HEADING_RX.search(title or ""):
                 section, title = title.strip()[:120], ""
             ref = re.sub(r"[^A-Z0-9]", "", reference.upper())
