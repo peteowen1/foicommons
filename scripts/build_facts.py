@@ -35,6 +35,46 @@ CLEAN = {"data/extract/clean/foi_lex_55799_student_recipients.csv": {
     "measure": "current and suspended student payment recipients", "unit": "people (rounded to 5)"}}
 
 
+# FOI LEX 55799 pages whose tables print no date (checked by hand, 11 November 2026). Documents 1-8 are Senate
+# Estimates briefs: the snapshot month is the one on the brief's own TRANSFERS table ("Comparing August 2025 to
+# August 2024"), and each brief's payment-rate total matches the clean table's total for that month (142,760 v
+# 142,765 March; 163,635 August; 165,680 September; 125,675 v 125,670 December). Documents 19, 29, 33, 34 print
+# "As at dd/mm/yyyy" in the page header, which the OCR missed or the transcription dropped.
+# (pdf part, first page, last page) -> (period, period_type, period_from)
+UNDATED_55799 = [
+    ("part-1", 1, 4, "2025-03", "month", "brief's transfers table"),
+    ("part-1", 5, 7, "2025-08", "month", "brief's transfers table"),
+    ("part-1", 8, 11, "2025-09", "month", "brief's transfers table"),
+    ("part-1", 12, 15, "2025-12", "month", "brief's transfers table"),
+    ("part-1", 16, 19, "2025-03", "month", "brief's transfers table"),
+    ("part-1", 20, 23, "2025-08", "month", "brief's transfers table"),
+    ("part-1", 24, 27, "2025-09", "month", "brief's transfers table"),
+    ("part-1", 28, 31, "2025-12", "month", "brief's transfers table"),
+    ("part-1", 77, 77, "2025-06-27", "date", "page header"),
+    ("part-2", 28, 28, "2025-11-28", "date", "page header"),
+    ("part-2", 48, 50, "2025-12-26", "date", "page header"),
+    ("part-2", 51, 53, "2025-09-26", "date", "page header"),
+]
+
+
+def date_55799(facts, tables):
+    """Give undated FOI LEX 55799 facts the date their document prints elsewhere (UNDATED_55799)."""
+    n = 0
+    for f in facts:
+        t = tables.get(f["table_id"])
+        if f["period"] or not t:
+            continue
+        m = re.search(r"foi-lex-55799-(part-\d)/p(\d{4})_", t["csv_path"])
+        if not m:
+            continue
+        for part, lo, hi, period, ptype, src in UNDATED_55799:
+            if m[1] == part and lo <= int(m[2]) <= hi:
+                f["period"], f["period_type"], f["period_from"] = period, ptype, src
+                n += 1
+    print(f"  FOI LEX 55799: {n} undated facts given their document's date")
+    return facts
+
+
 def rel(p):
     p = (p or "").replace("\\", "/")
     return p.split("foicommons/", 1)[1] if "foicommons/" in p else p
@@ -455,7 +495,7 @@ def main():
         with open(f"{ROOT}/{t['csv_path']}", encoding="utf-8", errors="replace") as fh:
             rows = list(csv.DictReader(fh))
         out += emit(tid, t, sorted(cols[tid], key=lambda c: int(c["position"])), rows)
-    out = apply_names(out + pdfplumber_facts())
+    out = apply_names(date_55799(out, tables) + pdfplumber_facts())
     fields = list(out[0])
     with open(f"{CAT}/facts.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)

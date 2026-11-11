@@ -183,8 +183,10 @@ Before the pass (9 October counts):
   table's numbers; on the first 1,654 tables only 118 were real "Table N" titles.
 - `context needed`: 602,642 facts in 8,683 tables. The free route is used up: naming those
 needs a model reading the page (one Haiku pass after the harvest, with the measure tidy). Known gaps: 21,555
-facts have no period, mostly 109 FOI LEX 55799 tables outside the clean table (month is in the page header)
-and the 12/13-037 policy scenarios (no period by nature); `measure` wording varies table to table.
+facts had no period, mostly FOI LEX 55799 tables outside the clean table, and the 12/13-037 policy scenarios
+(no period by nature); `measure` wording varies table to table. The 7,725 undated 55799 facts (65 tables) got
+their document's date on 11 November (`UNDATED_55799` in `build_facts.py`; `period_from` "page header" or
+"brief's transfers table").
 
 ## Queries
 
