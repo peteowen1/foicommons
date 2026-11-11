@@ -35,8 +35,12 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    20 of 79 asked are not statistics (codes, forms, registers). 77 of 79 evidence quotes found in the page text.
    Method: `scripts/naming_bundle.py` (grid + page text, 10 tables per file, one `Explore` Haiku agent each):
    17k input + 6k output tokens per table (149k + 7k when agents open files). Full pass: 8,698 tables ~152M
-   input + ~55M output Haiku tokens, ~870 agents, 3-4 hours. **Needs Pete: go for the full pass.** Then load the
-   names into facts (printed -> `labelled`, inferred -> new `inferred` layout, not statistics -> dropped).
+   input + ~55M output Haiku tokens at effort high. **Running since 11 November** (Pete: go, trimmed brief):
+   `.claude/workflows/naming-pass.js` at effort medium (~2.5k output tokens/table; same answers as high on 20
+   tables), bundles in `data/naming/bundles/` (870, 8,698 tables), run `wf_eb4e574c-7d3`. If it dies: resume
+   with `resumeFromRunId`. Then `python -P scripts/naming_load.py <run>/journal.jsonl` -> `data/naming/names.csv`,
+   and load names into facts (printed -> `labelled`, inferred -> new `inferred` layout, not statistics ->
+   dropped). Inferred names flip between runs (pilot item 35), so never treat them as printed.
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
