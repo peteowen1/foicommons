@@ -40,6 +40,12 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    items 5 and 8). Scripts: the 4 new ones fixed 11 November (one blocked-host writer, wayback skip by request +
    name, `kept_groups` errors logged, dead `.hv$fail` removed); 15 older ones still open. Catalogue: 52 logs with 0 requests, 239 raw dates not parsed.
    Done when: each is verified against the page or code and fixed or struck.
+   **Seed 17** (11 November, `data/reviews/haiku_*_17.md`; seed 16 checked nothing, sampler fixed): values
+   57 of 60 right, 3 unverified, 0 wrong. Fixed: leading "+", trailing "^" and dash runs (1,682 facts gained a
+   value, 5,897 became nil). Left: measures vague in 21 of 40 labelled facts and wrong in 3 (26 and 40 are
+   rule-based column names, 36 is a naming-pass guess); item 5 and 13 periods (as-at date on a sibling
+   tile; day dropped); items 18 and 20 lose wave/age dims; sampler never draws `inferred` facts and does not
+   record `named_by`; 2 new script notes (`table_filter.py` docstring `run` mode, `merge_triage.py:51` comment).
 3. OPEN **Scale vision: decide with Pete.** Counted 11 November: 6,476 scanned files = 4,355 unique PDFs,
    171,891 pages (166 documents over 200 pages hold 73,103 of them; median 8 pages). At DSS wayback rates
    (triage ~350 Haiku tokens/page; 10% of pages flagged; ~20k Sonnet tokens per transcribed page): triage

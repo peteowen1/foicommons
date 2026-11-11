@@ -138,7 +138,7 @@ def parse_value(raw):
     """(value or '', flag)"""
     r = raw.strip()
     low = r.lower()
-    if low in NIL:
+    if low in NIL or re.fullmatch(r"\$?[\s\-–—‐]+", r):   # "$ -", "---", "‐": a printed dash is nil (5,700 facts were "text")
         return "", "nil" if r else "blank"
     if low in ("redacted", "s22", "s47f", "s47g") or low.startswith("redacted"):
         return "", "redacted"
@@ -146,7 +146,10 @@ def parse_value(raw):
         return "", "not published"
     if re.match(r"^[<>≤≥]\s*\d", r):
         return "", "below threshold" if r[0] in "<≤" else "above threshold"
-    v = r.replace(",", "").replace("$", "").replace("%", "").replace(" ", "")
+    # a leading "+" (a printed change, "+1", "+12.5%") and a trailing "^" footnote mark are not part of the number
+    # (Haiku catalogue scan, seed 17: 299 and 1,136 facts were flagged "text")
+    v = r.replace(",", "").replace("$", "").replace("%", "").replace(" ", "").rstrip("^")
+    v = re.sub(r"^\+(?=[\d.])", "", v)
     neg = v.startswith("(") and v.endswith(")")
     v = v.strip("()")
     if re.fullmatch(r"-?\d+(\.\d+)?", v):

@@ -36,9 +36,14 @@ const SUMMARY = {
 phase('Sample')
 const sampled = await agent(
   `${ID}\nRun exactly this command from C:/dev/foicommons and report its printed output, nothing else:\n` +
-  `python -P scripts/review_samples.py ${seed}\nDo not edit any file.`,
-  { label: 'sample facts', model: 'haiku', effort: 'low', agentType: 'Explore' })
+  `python -P scripts/review_samples.py ${seed}\nThe command writes the two sample files; do not create or edit anything else.`,
+  // Default type, not Explore: the command writes data/reviews/sample_*_<seed>.json, and Explore agents refuse
+  // to write (seed 16, 11 Nov 2026: every checker then found no input). One short command stays well under the
+  // default type's ~55k starting context and Haiku's ~65k compaction point.
+  { label: 'sample facts', model: 'haiku', effort: 'low' })
 log(`samples: ${sampled}`)
+if (!new RegExp(`seed ${seed}: \\d+ checked facts`).test(String(sampled)))   // review_samples.py's own summary line
+  throw new Error(`sampler did not report writing the samples, stopping before the checks: ${String(sampled).slice(0, 300)}`)
 
 const slice = (key, lo, hi) => `
 Check ONLY the items with id ${lo} to ${hi}; other agents check the rest.`
