@@ -159,10 +159,19 @@ in `CLEAN` in build_facts.py) contribute facts from the clean table instead of t
 | unit | `%` for percentages, otherwise from the table's units |
 | kind | `reported` or `modelled` (worked examples, projections, policy scenarios) |
 | check_status | the table's checker status: are the DIGITS right |
-| layout | is the MEANING known: `checked` (any vision table: transcribed with a title and units and run through the checker; it does not test that the title is informative), `labelled` (text-layer table, header found, measure known), `captioned` (a printed "Table N: ..." title says what the table is, but not what each column measures), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
+| named_by | `naming pass (<model id>)` when the measure came from the Haiku naming pass (`data/naming/names.csv`), else blank |
+| layout | is the MEANING known: `checked` (any vision table: transcribed with a title and units and run through the checker; it does not test that the title is informative), `labelled` (text-layer table, header found or measure read off the printed page by the naming pass), `inferred` (the naming pass guessed the measure; no heading printed; guesses differ between runs, so treat as a lead), `captioned` (a printed "Table N: ..." title says what the table is, but not what each column measures), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
 
 State on 9 October 2026 (full harvest: pdfplumber over 1,407 unique table-bearing PDFs, 202,765 pages):
 1,169,701 facts from 17,377 tables. 11 November: 1,167,916 from 17,356, after identifier columns (cohort, activity_code, abn, sa2_code, ...) became row labels instead of 1,785 facts.
+11 November, after the Haiku naming pass (`scripts/naming_bundle.py`, `.claude/workflows/naming-pass.js`,
+`scripts/naming_load.py`; 8,698 tables, run `wf_eb4e574c-7d3`, ~48M Haiku tokens): 1,071,407 facts from 15,741
+tables. `labelled` 569,869 (114,132 named from printed headings), `inferred` 220,909, `captioned` 47,848,
+`context needed` 172,871, `checked` 59,910; 96,509 facts dropped from 2,137 tables judged not statistics
+(codes, forms, registers). Sonnet spot-check of 20 (`data/reviews/naming_check/sample_1111.json`): printed
+5 right / 3 partly / 0 wrong of 8; inferred 2 / 5 / 1 of 8; not statistics 4 of 4 right. Weak cases are bad
+grids and grids split from their heading. The pass's periods are in names.csv but not yet in facts.
+Before the pass (9 October counts):
 - `checked` (vision): 59,966 facts from 876 tables. The 62,411 recorded on 8 October at 17:36 counted the
   10 model-comparison pilot tables a second time (excluded from the catalogue since).
 - `labelled`: 459,449 facts. pdfplumber found 134,177 tables and kept 16,681 (3+ rows, 2+ columns, 30%+

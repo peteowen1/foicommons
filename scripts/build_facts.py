@@ -356,6 +356,45 @@ def pdfplumber_facts():
     return out
 
 
+NAMES = f"{ROOT}/data/naming/names.csv"
+NO_UNIT = {"", "unknown", "none", "n/a", "code"}
+
+
+def apply_names(facts):
+    """Name `context needed` facts from the Haiku naming pass (data/naming/names.csv; scripts/naming_load.py).
+
+    Names read off printed headings make a fact `labelled`; guessed names make it `inferred` (they flip between
+    runs, pilot item 35, so never pass them off as printed); a table Haiku judged not statistics (codes, forms,
+    registers) loses its unnamed facts; "unknown" stays `context needed`. Every named fact records `named_by`.
+    """
+    if not os.path.exists(NAMES):
+        print(f"  naming pass: {NAMES} missing, no names applied")
+        return facts
+    names = {(r["table_id"], r["column"]): r for r in csv.DictReader(open(NAMES, encoding="utf-8"))}
+    out, n = [], Counter()
+    for f in facts:
+        f["named_by"] = ""
+        r = names.get((f["table_id"], f["column"])) if f["layout"] == "context needed" else None
+        if r is None:
+            out.append(f)
+            continue
+        if r["is_statistics"] == "False":
+            n["dropped, not statistics"] += 1
+            continue
+        if r["source"] in ("printed", "inferred") and r["measure"]:
+            f["measure"] = r["measure"]
+            if not f["unit"] and r["units"].strip().lower() not in NO_UNIT:
+                f["unit"] = r["units"]
+            f["layout"] = "labelled" if r["source"] == "printed" else "inferred"
+            f["named_by"] = f"naming pass ({r['model_id']})"
+            n[f["layout"]] += 1
+        else:
+            n["still context needed"] += 1
+        out.append(f)
+    print(f"  naming pass: {dict(n)}")
+    return out
+
+
 def main():
     tables = {t["table_id"]: t for t in csv.DictReader(open(f"{CAT}/tables.csv", encoding="utf-8")) if t["method"] == "vision"}
     cols = defaultdict(list)
@@ -388,7 +427,7 @@ def main():
         with open(f"{ROOT}/{t['csv_path']}", encoding="utf-8", errors="replace") as fh:
             rows = list(csv.DictReader(fh))
         out += emit(tid, t, sorted(cols[tid], key=lambda c: int(c["position"])), rows)
-    out += pdfplumber_facts()
+    out = apply_names(out + pdfplumber_facts())
     fields = list(out[0])
     with open(f"{CAT}/facts.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)

@@ -8,7 +8,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 - **Phase 1 archive: done.** All-agency run finished 8 October 20:43 (170/170 logs; NDIS 403 recorded).
   Survey: 19,310 files, 14,312 unique documents (count from `documents`, never raw folders; `docs/data-model.md`).
 - **Phase 2 extraction.** pdfplumber over 1,407 unique table-bearing PDFs; vision over phase 1 and DSS
-  wayback scans. `facts`: 1,167,916 from 17,356 tables (11 November, after identifier columns stopped counting as facts).
+  wayback scans. `facts`: 1,071,407 from 15,741 tables (11 November, after the Haiku naming pass).
   Rebuild: `python -P scripts/build_catalogue.py` then `python -P scripts/build_facts.py` (~2 min).
 - **Backup**: private release `extract-backup`, latest `foicommons_extract_2026-11-11.tar.gz` (40 MB,
   136,640 files, round-trip sha256 checked). Refresh after each extraction run:
@@ -29,18 +29,12 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 
 ## Queue (ranked)
 
-1. OPEN **Name the unnamed tables: one Haiku pass** (Pete, 8 October: one pass). Grid digits are fine (seed 15:
-   40 of 40). **Pilot done 11 November** (`data/reviews/naming_pilot/`, 99 of 100 random `context needed` tables;
-   1 skipped silently, so check every id returns): 41 named from printed headings, 31 inferred, 7 unknown,
-   20 of 79 asked are not statistics (codes, forms, registers). 77 of 79 evidence quotes found in the page text.
-   Method: `scripts/naming_bundle.py` (grid + page text, 10 tables per file, one `Explore` Haiku agent each):
-   17k input + 6k output tokens per table (149k + 7k when agents open files). Full pass: 8,698 tables ~152M
-   input + ~55M output Haiku tokens at effort high. **Running since 11 November** (Pete: go, trimmed brief):
-   `.claude/workflows/naming-pass.js` at effort medium (~2.5k output tokens/table; same answers as high on 20
-   tables), bundles in `data/naming/bundles/` (870, 8,698 tables), run `wf_eb4e574c-7d3`. If it dies: resume
-   with `resumeFromRunId`. Then `python -P scripts/naming_load.py <run>/journal.jsonl` -> `data/naming/names.csv`,
-   and load names into facts (printed -> `labelled`, inferred -> new `inferred` layout, not statistics ->
-   dropped). Inferred names flip between runs (pilot item 35), so never treat them as printed.
+1. OPEN **Naming pass follow-ups.** Pass done 11 November (8,698 of 8,698 tables, ~48M Haiku tokens, 59 min,
+   run `wf_eb4e574c-7d3`; names in `data/naming/names.csv`, loaded by `apply_names` in `build_facts.py`;
+   counts and the 20-table Sonnet check in `docs/data-model.md`). Left: periods from names.csv into facts
+   (4,663 tables give one; parse to period_type); 510 value columns with no measure; tables judged not
+   statistics were dropped on Haiku's word (4 of 4 right in the check; 2,137 tables, 96,509 facts): sample 20
+   more before publishing. Done when: periods loaded and a second check of 20 `labelled` named facts passes.
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
