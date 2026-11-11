@@ -46,6 +46,11 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    rule-based column names, 36 is a naming-pass guess); item 5 and 13 periods (as-at date on a sibling
    tile; day dropped); items 18 and 20 lose wave/age dims; sampler never draws `inferred` facts and does not
    record `named_by`; 2 new script notes (`table_filter.py` docstring `run` mode, `merge_triage.py:51` comment).
+   **Seed 18** (first check of `inferred`; Haiku's verdicts, not re-verified): text-layer values 39 of 40
+   right. Measures, 20 each: `labelled` 2 right / 13 vague / 5 wrong (column-name rule: "trainee pay" for
+   points, "dyna mustang 525i" from other rows' cells); `inferred` 2 / 11 / 7 (5 of the 7 wrong had the answer
+   printed on the page). Vision `checked` facts: measures 18 of 20 right. So text-layer measures are leads,
+   not labels, whichever route named them: decide with Pete how they are published (queue item 3b).
 3. OPEN **Scale vision: decide with Pete.** Counted 11 November: 6,476 scanned files = 4,355 unique PDFs,
    171,891 pages (166 documents over 200 pages hold 73,103 of them; median 8 pages). At DSS wayback rates
    (triage ~350 Haiku tokens/page; 10% of pages flagged; ~20k Sonnet tokens per transcribed page): triage
