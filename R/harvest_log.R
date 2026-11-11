@@ -270,6 +270,9 @@ harvest_log <- function(log_slug, log_url, agency = "", mode = "full", max_docs 
     out
   }
   stop_all <- function() st$stopped != ""
+  looks_html <- function(f) {   # first 1 KB: no NUL bytes and no file signature (%PDF, PK zip, OLE)
+    b <- readBin(f, "raw", 1024); !any(b == as.raw(0)) && !grepl("^(%PDF|PK)", rawToChar(b[seq_len(min(4, length(b)))]))
+  }
   process_items <- function(items, page_url, listing_url, depth, detail_url = "", detail_text = "", parent = NULL, detail_queue = NULL) {
     new_details <- list()
     for (it in items) {
@@ -347,6 +350,13 @@ harvest_log <- function(log_slug, log_url, agency = "", mode = "full", max_docs 
     r <- fetch_page(d$url, sprintf("detail-%05d.html", dn))
     if (r$status != 200) { emit(list(link_type = "detail_error", depth = 1, listing_url = d$item$id, detail_url = d$url, http_status = as.character(r$status), note = r$note %||% "", fetched_at = now_utc(), item_id = d$item$id)); next }
     st$details <- st$details + 1
+    if (!looks_html(r$file)) {   # a "detail" link that redirects to a file (AFTRS /schedule-1-2/ -> a PDF): archive it as a document
+      dd <- if (mode == "full") download_doc(r$final_url %||% d$url) else list(note = "html_only mode: not downloaded")
+      if (!isTRUE(dd$skipped) && mode == "full") st$docs_new <- st$docs_new + 1
+      emit(c(list(link_type = "document", depth = 1, listing_url = d$item$id, detail_url = d$url, doc_url = r$final_url %||% d$url, item_id = d$item$id, title = d$item$title, item_text = d$item$text),
+             dd[intersect(names(dd), c("status", "local_path", "sha256", "bytes", "content_type", "note", "fetched_at"))] |> (\(x) setNames(x, sub("^status$", "http_status", names(x))))()))
+      next
+    }
     doc <- tryCatch(read_html(r$file), error = function(e) NULL); if (is.null(doc)) next
     ex <- extract_items(doc, d$url, own_host, log_url)
     emit(list(link_type = "detail_fetched", depth = 1, listing_url = "", detail_url = d$url, local_path = file.path(rel_dir, basename(r$file)), http_status = "200", fetched_at = now_utc(), item_id = d$item$id,

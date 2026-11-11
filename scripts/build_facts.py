@@ -10,7 +10,7 @@ Rules agreed with Pete, 8 October 2026 (docs/data-model.md, "facts"):
   5. modelled or illustrative numbers (worked examples, projections) are kept with kind=modelled
 Run after build_catalogue.py:  python -P scripts/build_facts.py
 """
-import csv, os, re, sys
+import csv, datetime, os, re, sys
 from collections import Counter, defaultdict
 
 csv.field_size_limit(sys.maxsize)
@@ -63,11 +63,23 @@ def row_period_value(v, dim):
     return ""
 
 
+def real_date(y, m, d):
+    """True for a calendar date; 2,589 facts once carried periods like 2024-13-02 (Haiku check, 9 Oct 2026)."""
+    try:
+        datetime.date(y, m, d)
+        return True
+    except ValueError:
+        return False
+
+
 def period_in_name(name):
     """(period, period_type, name with the period removed) for a value column like lodged_2019_20 or sept09_1st."""
     n = name.lower()
+    m = re.search(rf"(?<!\d)(\d{{1,2}})_({MONTHS})[a-z]*_((?:19|20)\d\d)(?!\d)", n)   # s03_24_jul_2024_13_02: 24 July 2024 (13:02 is a time)
+    if m and real_date(int(m.group(3)), MONTH_NUM[m.group(2)[:3]], int(m.group(1))):
+        return f"{m.group(3)}-{MONTH_NUM[m.group(2)[:3]]:02d}-{int(m.group(1)):02d}", "date", n.replace(m.group(0), " ")
     m = re.search(r"(?<!\d)((?:19|20)\d\d)_(\d\d)_(\d\d)(?!\d)", n)   # d_2026_06_22: a full date, not a year
-    if m:
+    if m and real_date(int(m.group(1)), int(m.group(2)), int(m.group(3))):
         return f"{m.group(1)}-{m.group(2)}-{m.group(3)}", "date", n.replace(m.group(0), " ")
     m = re.search(r"(?<!\d)((?:19|20)\d\d)_(\d\d)(?!\d)", n)
     if m and int(m.group(2)) == (int(m.group(1)) + 1) % 100:
@@ -296,7 +308,8 @@ def pdfplumber_facts():
         if not x or int(x["n_rows"]) < 3 or int(x["n_cols"]) < 2 or float(x["numeric_share"] or 0) < 0.3:
             continue
         with open(f"{ROOT}/{path}", encoding="utf-8", errors="replace") as fh:
-            grid = [r for r in csv.reader(fh) if any(c.strip() for c in r)]
+            recs = [(n, r) for n, r in enumerate(csv.reader(fh), 1) if any(c.strip() for c in r)]
+        grid, rec_no = [r for _, r in recs], [n for n, _ in recs]   # rec_no: the row's record number in the CSV file
         if len(grid) < 2:
             continue
         width = max(len(r) for r in grid)
@@ -330,7 +343,9 @@ def pdfplumber_facts():
                 # a printed "Table N: ..." title says what the table is, though not what each column measures
                 f["layout"] = "captioned" if cap else "context needed"
         for f in facts:
-            f["csv_line"] = int(f["csv_line"]) + h - 1   # emit counts from the first data row as line 2
+            # emit counts the first data row as line 2; map back to the CSV's own record number, which differs when
+            # empty rows were dropped above it (6% of text-layer facts pointed at the wrong row; Haiku check, 9 Oct 2026)
+            f["csv_line"] = rec_no[h + int(f["csv_line"]) - 2]
         out += facts
         kept += 1
     print(f"  pdfplumber: {kept} tables kept of {len(cat)} ({no_header} with no header row), {len(out)} facts")

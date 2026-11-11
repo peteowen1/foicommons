@@ -28,7 +28,7 @@ erDiagram
 - A **request** is one entry in a log: one FOI decision.
 - A **document** is one unique file, keyed by its sha256. The same file reached through two logs or two
   harvests (phase 1 and the all-agency run, or a log wrongly attributed to another agency) is ONE document
-  with several rows in `document_sources`. On 8 October 2026, 4,475 of 11,935 documents had more than one copy.
+  with several rows in `document_sources`. On 8 October 2026 (after the full harvest), 4,583 of 14,312 documents had more than one copy.
   Count documents from `documents`, never from `document_sources` or the raw folders.
 - A **table** is one extracted table (one CSV). `columns` is the data dictionary of every table's columns.
 - A **series** is the same table published again (another month, year or release).
@@ -161,13 +161,17 @@ in `CLEAN` in build_facts.py) contribute facts from the clean table instead of t
 | check_status | the table's checker status: are the DIGITS right |
 | layout | is the MEANING known: `checked` (any vision table: transcribed with a title and units and run through the checker; it does not test that the title is informative), `labelled` (text-layer table, header found, measure known), `captioned` (a printed "Table N: ..." title says what the table is, but not what each column measures), `context needed` (digits right, but what they count is not on record: the title or headings sit outside the extracted grid) |
 
-State on 8 October 2026: 167,855 facts from 2,540 tables. Vision: 62,411 from 886 tables (`checked`).
-pdfplumber: 1,662 of 7,506 text-layer tables kept (3+ rows, 2+ columns, 30%+ numeric; the rest are
-fragments), header = leading rows that are mostly text or years (up to 3, merged per column); 17,380 facts
-`labelled`, 88,064 `context needed`. Captions (`scripts/table_captions.py`, the text just above each
-table) were tried the same day: only 118 of 1,654 are real "Table N" titles; the rest is page furniture
-("Commercial-in-confidence 33", "Page 107"), prose or the previous table's numbers. 73 tables moved to
-`captioned`; 85,826 facts in 1,226 tables stay `context needed`. The free route is used up: naming those
+State on 9 October 2026 (full harvest: pdfplumber over 1,407 unique table-bearing PDFs, 202,765 pages):
+1,169,701 facts from 17,377 tables.
+- `checked` (vision): 59,966 facts from 876 tables. The 62,411 recorded on 8 October at 17:36 counted the
+  10 model-comparison pilot tables a second time (excluded from the catalogue since).
+- `labelled`: 459,449 facts. pdfplumber found 134,177 tables and kept 16,681 (3+ rows, 2+ columns, 30%+
+  numeric; the rest are fragments); header = leading rows that are mostly text or years (up to 3, merged
+  per column), spreadsheet-letter rows skipped.
+- `captioned`: 47,644 facts in 1,692 tables. Captions (`scripts/table_captions.py`, the text just above
+  each table) are mostly page furniture ("Commercial-in-confidence 33", "Page 107"), prose or the previous
+  table's numbers; on the first 1,654 tables only 118 were real "Table N" titles.
+- `context needed`: 602,642 facts in 8,683 tables. The free route is used up: naming those
 needs a model reading the page (one Haiku pass after the harvest, with the measure tidy). Known gaps: 21,555
 facts have no period, mostly 109 FOI LEX 55799 tables outside the clean table (month is in the page header)
 and the 12/13-037 policy scenarios (no period by nature); `measure` wording varies table to table.
