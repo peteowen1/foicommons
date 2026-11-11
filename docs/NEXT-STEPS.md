@@ -51,6 +51,10 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    points, "dyna mustang 525i" from other rows' cells); `inferred` 2 / 11 / 7 (5 of the 7 wrong had the answer
    printed on the page). Vision `checked` facts: measures 18 of 20 right. So text-layer measures are leads,
    not labels, whichever route named them: decide with Pete how they are published (queue item 3b).
+   **Sonnet pilot** (11 November; bundles 33 70 75 261 289 441 539 770 835 846, same brief; Opus judged one
+   column per table blind, `scripts/naming_compare.py`, `data/reviews/naming_compare/`): of 100, Sonnet right 59
+   / vague 18 / wrong 7 / not statistics 16; Haiku 42 / 32 / 8 / 18. ~10 of Sonnet's vague have no meaning on
+   the page at all. Cost 434k Sonnet tokens per 100 tables, so a full pass is ~38M.
 3. OPEN **Scale vision: decide with Pete.** Counted 11 November: 6,476 scanned files = 4,355 unique PDFs,
    171,891 pages (166 documents over 200 pages hold 73,103 of them; median 8 pages). At DSS wayback rates
    (triage ~350 Haiku tokens/page; 10% of pages flagged; ~20k Sonnet tokens per transcribed page): triage

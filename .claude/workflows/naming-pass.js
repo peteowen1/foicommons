@@ -12,6 +12,10 @@ const first = Number(args && args.first), last = Number(args && args.last)
 if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first)
   throw new Error(`args {first, last} must be bundle numbers, got ${JSON.stringify(args)}`)
 const TOTAL = Number(args && args.total_tables) || 8698
+// args.model / args.effort: a different namer for pilots (Sonnet pilot, 11 Nov 2026); default Haiku at medium.
+// args.bundles: an explicit list of bundle numbers instead of first..last.
+const MODEL = ['haiku', 'sonnet'].includes(args && args.model) ? args.model : 'haiku'
+const EFFORT = ['low', 'medium', 'high'].includes(args && args.effort) ? args.effort : 'medium'
 const D = 'C:/dev/foicommons/data/naming/bundles/'
 const pad = n => String(n).padStart(4, '0')
 const ids = b => { const out = []; for (let i = (b - 1) * 10 + 1; i <= Math.min(b * 10, TOTAL); i++) out.push(i); return out }
@@ -37,10 +41,11 @@ const SCHEMA = { type: 'object', additionalProperties: false,
 
 const parse = s => { try { const a = JSON.parse(s); return Array.isArray(a) ? a : null } catch (e) { return null } }
 const run = (b, want, attempt) => agent(BRIEF(b, want), { label: `bundle ${pad(b)}${attempt ? ' retry' : ''}`, phase: 'Name',
-  model: 'haiku', effort: 'medium', agentType: 'Explore', schema: SCHEMA })
+  model: MODEL, effort: EFFORT, agentType: 'Explore', schema: SCHEMA })
 
 const bundles = []
-for (let b = first; b <= last; b++) bundles.push(b)
+if (Array.isArray(args && args.bundles)) for (const b of args.bundles) { if (Number.isSafeInteger(b) && b >= 1) bundles.push(b) }
+else for (let b = first; b <= last; b++) bundles.push(b)
 phase('Name')
 const results = await pipeline(bundles,
   async b => {
