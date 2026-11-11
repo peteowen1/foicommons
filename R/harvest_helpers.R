@@ -6,7 +6,7 @@ script_dir0 <- dirname(sub("--file=", "", grep("--file=", commandArgs(FALSE), va
 if (!exists("FC_UA")) source(file.path(script_dir0, "helpers.R"))
 
 HV_BLOCKED_FILE <- file.path(FC_DATA, "registry", "blocked_hosts.csv")
-.hv <- new.env(); .hv$doc403 <- list(); .hv$fail <- list()
+.hv <- new.env(); .hv$doc403 <- list()
 
 hv_load_blocked <- function() {
   if (file.exists(HV_BLOCKED_FILE)) {
@@ -14,13 +14,11 @@ hv_load_blocked <- function() {
     .fc$blocked <- unique(c(.fc$blocked, b$host))
   }
 }
+# One writer for blocked_hosts.csv: helpers.R fc_record_block (it also skips hosts already in the file, which
+# the in-memory check here missed when another run had recorded them; Haiku check, seed 15).
 hv_mark_blocked <- function(host, status, url, why) {
   if (host %in% .fc$blocked) return(invisible())
-  .fc$blocked <- c(.fc$blocked, host)
-  dir.create(dirname(HV_BLOCKED_FILE), showWarnings = FALSE, recursive = TRUE)
-  ex <- file.exists(HV_BLOCKED_FILE)
-  write.table(data.frame(host = host, blocked_at = format(Sys.time(), tz = "UTC"), status = status, url = url, why = why),
-              HV_BLOCKED_FILE, sep = ",", row.names = FALSE, col.names = !ex, append = ex, qmethod = "double")
+  fc_record_block(host, status, url, why)
   log_msg("BLOCKED host %s (%s): %s", host, status, why)
 }
 hv_looks_like_challenge <- function(p) {
@@ -47,11 +45,9 @@ hv_get <- function(url, dest, kind = "page", delay = NULL, max_hops = 6) {
     if (inherits(resp, "error")) {
       tries_err <- tries_err + 1
       if (tries_err <= 1) { Sys.sleep(10); next }
-      .hv$fail[[host]] <- (.hv$fail[[host]] %||% 0) + 1
       if (file.exists(tmp)) file.remove(tmp)
       return(list(status = -1L, note = conditionMessage(resp), final_url = cur))
     }
-    .hv$fail[[host]] <- 0
     st <- resp_status(resp)
     if (st %in% c(301, 302, 303, 307, 308)) {
       loc <- resp_header(resp, "location")

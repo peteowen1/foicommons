@@ -37,8 +37,8 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
-   items 5 and 8). Scripts: 4 new (blocked-host second writer, wayback basename skip, swallowed `kept_groups`
-   error, unread `.hv$fail`), 15 still open. Catalogue: 52 logs with 0 requests, 239 raw dates not parsed.
+   items 5 and 8). Scripts: the 4 new ones fixed 11 November (one blocked-host writer, wayback skip by request +
+   name, `kept_groups` errors logged, dead `.hv$fail` removed); 15 older ones still open. Catalogue: 52 logs with 0 requests, 239 raw dates not parsed.
    Done when: each is verified against the page or code and fixed or struck.
 3. OPEN **Scale vision: decide with Pete.** Counted 11 November: 6,476 scanned files = 4,355 unique PDFs,
    171,891 pages (166 documents over 200 pages hold 73,103 of them; median 8 pages). At DSS wayback rates

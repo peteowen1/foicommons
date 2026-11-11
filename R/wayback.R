@@ -101,15 +101,21 @@ stage_parse <- function() {
 stage_files <- function() {
   source(file.path(script_dir, "harvest_helpers.R")); hv_load_blocked()
   e <- read.csv(file.path(OUT_DIR, "dss_entries.csv"), colClasses = "character", encoding = "UTF-8")
-  held <- tolower(basename(list.files(file.path(FC_DATA, "raw", "dss"), recursive = TRUE)))
+  # Held = same request number AND same file name: generic names (doc_01_redacted_2.pdf) recur across requests,
+  # so a name alone could skip a different document (Haiku check, seed 15; none did on 11 November 2026).
+  # Folder spellings vary (16_17-007, FOI_19_20-042), so the request is compared by its digits.
+  ref_key <- function(x) vapply(regmatches(x, gregexpr("[0-9]+", x)), paste, "", collapse = "-")
+  hf <- list.files(file.path(FC_DATA, "raw", "dss"), recursive = TRUE)
+  held <- paste(ref_key(sub("/.*$", "", hf)), tolower(basename(hf)))
   e <- e[!duplicated(e$doc_url), ]
-  todo <- e[!tolower(basename(sub("[?#].*$", "", e$doc_url))) %in% held, ]
+  e_key <- paste(ref_key(e$reference), tolower(basename(sub("[?#].*$", "", e$doc_url))))
+  todo <- e[!e_key %in% held, ]
   SRC <- "dss_wayback"; mf <- read_manifest(SRC)
   done <- mf$doc_url[mf$http_status %in% c("200", "404", "not-the-file")]
   todo <- todo[!todo$doc_url %in% done, ]
   if (length(args) > 1) todo <- head(todo, as.integer(args[2]))   # trial runs: Rscript R/wayback.R files 3
   log_msg("[wayback dss] %d distinct files listed; %d already held from the live log; %d to fetch now",
-          nrow(e), sum(tolower(basename(sub("[?#].*$", "", e$doc_url))) %in% held), nrow(todo))
+          nrow(e), sum(e_key %in% held), nrow(todo))
   magic <- list(pdf = "%PDF", docx = "PK", xlsx = "PK", zip = "PK", rtf = "{\\rtf", doc = rawToChar(as.raw(c(0xD0, 0xCF))))
   for (i in seq_len(nrow(todo))) {
     x <- todo[i, ]

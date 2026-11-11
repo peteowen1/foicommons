@@ -132,7 +132,7 @@ fields_of <- function(node) {
 extract_items <- function(doc, page_url, own_host, listing_url) {
   root <- clean_root(get_root(doc)); if (inherits(root, "xml_missing")) return(list(items = list(), main_text = ""))
   main_text <- node_text(root)
-  kg <- tryCatch(kept_groups(root), error = function(e) list()); member_paths <- unlist(lapply(kg, `[[`, "paths"))
+  kg <- tryCatch(kept_groups(root), error = function(e) { log_msg("kept_groups failed on %s: %s", page_url, conditionMessage(e)); list() }); member_paths <- unlist(lapply(kg, `[[`, "paths"))
   anchors <- xml_find_all(root, ".//a[@href]"); groups <- list(); order <- character()
   for (a in anchors) {
     href <- trimws(xml_attr(a, "href")); if (!nzchar(href) || grepl("^#|^javascript:", href, ignore.case = TRUE)) next

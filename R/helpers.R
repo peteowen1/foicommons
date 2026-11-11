@@ -74,13 +74,13 @@ fc_load_blocked <- function() {
   if (file.exists(FC_BLOCKED_FILE)) .fc$blocked <- unique(c(.fc$blocked, read.csv(FC_BLOCKED_FILE, colClasses = "character")$host))
   .fc$blocked_loaded <- TRUE
 }
-fc_record_block <- function(host, status, url) {
+fc_record_block <- function(host, status, url, why = "fc_get") {
   .fc$blocked <- unique(c(.fc$blocked, host))
   known <- if (file.exists(FC_BLOCKED_FILE)) read.csv(FC_BLOCKED_FILE, colClasses = "character")$host else character()
   if (host %in% known) return(invisible())
   dir.create(dirname(FC_BLOCKED_FILE), showWarnings = FALSE, recursive = TRUE)
   ex <- file.exists(FC_BLOCKED_FILE)
-  write.table(data.frame(host = host, blocked_at = format(Sys.time(), tz = "UTC"), status = status, url = url, why = "fc_get"),
+  write.table(data.frame(host = host, blocked_at = format(Sys.time(), tz = "UTC"), status = status, url = url, why = why),
               FC_BLOCKED_FILE, sep = ",", row.names = FALSE, col.names = !ex, append = ex, qmethod = "double")
 }
 
