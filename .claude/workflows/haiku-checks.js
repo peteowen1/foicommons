@@ -57,7 +57,7 @@ For each item answer: value_ok (does the page print exactly value_as_recorded in
 Return the report as report_md: one row per item, totals per check, then the 5 most important problems. If you run short of budget, say exactly which items you did not check.` },
   { key: 'labelled_facts', prompt:
 `${ID}\n${RO} 
-Input: ${R}/sample_labelled_facts_${seed}.json, 40 numbers from the TEXT layer of government FOI PDFs. Each item has \`pdf\` and \`page\` (open with the Read tool, pages parameter), \`table_csv\` (the extracted grid, small, you may open it), \`csv_line\`, \`column\`, \`value_as_recorded\`, \`measure\`, \`row_label\`.
+Input: ${R}/sample_labelled_facts_${seed}.json, 40 numbers from the TEXT layer of government FOI PDFs. Each item has \`pdf\` and \`page\` (open with the Read tool, pages parameter), \`table_csv\` (the extracted grid, small, you may open it), \`csv_line\`, \`column\`, \`value_as_recorded\`, \`measure\`, \`row_label\`, \`layout\` and \`named_by\`. Items 21-40 are \`inferred\`: their measure is a model's guess from the page, so judge it hardest, and say in each "wrong" whether the page could have told a careful reader the right measure.
 
 For each item answer: value_ok (printed in that row, under the heading \`column\` names?); shifted (if not, is it elsewhere in the same row?); column_ok (yes / partly / no); measure_ok (yes / vague / wrong). For any "no", say whether the CSV grid itself is wrong (extraction) or the CSV is right and the fact is wrong (fact-building).
 

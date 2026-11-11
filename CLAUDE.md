@@ -33,7 +33,7 @@ Raw data, PDFs and manifests stay under `data/` (gitignored). CSV only, no RDS, 
 - Writing Windows paths through `sed`/Python strings mangled `\f` and `\a` into control characters
   three times. Use forward slashes in paths written by scripts.
 - Haiku check squad: after each chunk of work, once `build_catalogue.py` and `build_facts.py` have been rerun,
-  `Workflow({name: "haiku-checks", args: {seed: <new integer>}})` (~0.5M Haiku tokens, ~5 min, read-only; agents return report text, the session writes it;
+  `Workflow({name: "haiku-checks", args: {seed: <new integer>}})` (~0.5M Haiku tokens, ~5 min, read-only; agents return report text; write it with `python -P scripts/save_check_reports.py <run>/journal.jsonl <seed>`;
   reports in `data/reviews/haiku_*_<seed>.md`). Verify a finding before fixing it: reports have overstated twice.
 - Long runs: launch detached (`Invoke-CimMethod Win32_Process Create`), since `nohup` dies with the Claude
   session; check with `tasklist | grep Rscript`. `extract_tables.py --workers 8` max (12 ran out of memory).
