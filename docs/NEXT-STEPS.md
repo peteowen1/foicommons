@@ -29,12 +29,14 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 
 ## Queue (ranked)
 
-1. OPEN **Name the unnamed tables: one Haiku pass** (Pete, 8 October: one pass). Trigger fired: harvest
-   extracted. Grid digits are fine: seed 15 (11 November) found 40 of 40 labelled values right (32 checked
-   against the page; a script also found all 40 printed on their pages), so the 27 of 40 on 9 October was the
-   csv_line bug fixed that day. Meaning is the gap: 29 of 40 measure names vague or wrong, plus the
-   `context needed` tables (602,642 facts in 8,683). Use `Explore`-type Haiku agents in slices of 10 (memory:
-   default agents thrash). Done when: every `labelled`/`context needed` table has a measure name and units.
+1. OPEN **Name the unnamed tables: one Haiku pass** (Pete, 8 October: one pass). Grid digits are fine (seed 15:
+   40 of 40). **Pilot done 11 November** (`data/reviews/naming_pilot/`, 99 of 100 random `context needed` tables;
+   1 skipped silently, so check every id returns): 41 named from printed headings, 31 inferred, 7 unknown,
+   20 of 79 asked are not statistics (codes, forms, registers). 77 of 79 evidence quotes found in the page text.
+   Method: `scripts/naming_bundle.py` (grid + page text, 10 tables per file, one `Explore` Haiku agent each):
+   17k input + 6k output tokens per table (149k + 7k when agents open files). Full pass: 8,698 tables ~152M
+   input + ~55M output Haiku tokens, ~870 agents, 3-4 hours. **Needs Pete: go for the full pass.** Then load the
+   names into facts (printed -> `labelled`, inferred -> new `inferred` layout, not statistics -> dropped).
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
