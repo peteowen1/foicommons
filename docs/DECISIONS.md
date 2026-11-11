@@ -26,3 +26,13 @@ Decisions for foicommons, newest first. Queue: `docs/NEXT-STEPS.md`.
 - **Registry drops logs on another agency's host** (8 October, `d203ba5`). ANAO has no log of its own, so its
   `foreign_logs_only` row is correct.
 - **`11_12-044__52 p17` Grants Unexpended**: (83,065) as printed (Pete); the total not reconciling is the source.
+
+## November 2026: text-layer measures are published as machine labels
+
+11 November, Pete. Text-layer digits check out (seeds 17-18: 96 of 100 confirmed, none wrong), but their measure
+names do not: seed 18 found 2 of 20 right for column-name measures and 2 of 20 for Haiku's guesses; a blind Opus
+judgement of 100 tables put Sonnet at 59 right / 7 wrong against Haiku's 42 / 8. Pete chose not to spend ~38M
+Sonnet tokens on a re-name: every text-layer measure (`labelled`, `inferred`, `captioned`, `context needed`) is
+published as an unchecked machine label beside its grid and a link to the PDF page. Only vision `checked` facts
+carry their measure as a checked statement. Revisit if a use needs reliable measures for one agency's tables
+(re-name those with Sonnet: `naming-pass.js` with `model: sonnet`, ~4.3k tokens per table).
