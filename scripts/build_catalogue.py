@@ -52,8 +52,8 @@ def iso_date(raw):
 # decision as written -> one of six values; anything else (link text, sentences cut at the word "Decision") is
 # not a decision and gets "" (11 November 2026: 185 spellings, of which ~25 were real decisions)
 DECISION_STD = [
-    ("partial", re.compile(r"^(released in part|partial(ly)? (release|access)|partial)\b", re.I)),
-    ("full", re.compile(r"^(released? in full|full(y)? (release|access)|access granted)$", re.I)),
+    ("partial", re.compile(r"^((documents|information) as requested,? in part|released in part|partial(ly)? (release|access)|partial)\b", re.I)),
+    ("full", re.compile(r"^((documents|information) as requested,? in full|released? in full|full(y)? (release|access)|access granted)$", re.I)),
     ("refused", re.compile(r"^(refus(ed|al)|access refused|exempt)$", re.I)),
     ("withdrawn", re.compile(r"^withdrawn$", re.I)),
     ("transferred", re.compile(r"^transferred$", re.I)),
@@ -62,7 +62,7 @@ DECISION_STD = [
 
 
 def decision_std(raw):
-    t = (raw or "").strip()
+    t = (raw or "").strip("\u200b \t\n")
     return next((v for v, rx in DECISION_STD if rx.search(t)), "")
 
 
@@ -106,7 +106,8 @@ def pick_fields(fields_json):
     for what, rx in FIELD_RULES:
         for k, v in f.items():
             k2 = re.sub(r"\s+sort (ascending|descending)$", "", k.strip(), flags=re.I)
-            if isinstance(v, str) and v.strip() and rx.search(k2) and not re.match(r"^col\d+$", k2):
+            if isinstance(v, str) and v.strip() and rx.search(k2) and not re.match(r"^col\d+$", k2) \
+                    and not (what == "decision" and re.match(r"\W*download as", v.strip(), re.I)):   # DVA: "Access" is the link
                 got[what] = v.strip()
                 break
     # "FOI request" is the reference in some table logs and the request's description on DFAT's cards: a long
@@ -119,6 +120,9 @@ def pick_fields(fields_json):
             if isinstance(v, str) and len(v.strip()) > 40 and re.fullmatch(r"foi request|request", k.strip(), re.I):
                 got["title"] = v.strip()
                 break
+    if "decision" not in got:   # DVA tables: the decision is "Documents provided: Documents as requested, in part"
+        got["decision"] = next((v.strip() for k, v in f.items() if isinstance(v, str) and re.fullmatch(r"documents provided", k.strip(), re.I)
+                                and decision_std(v)), "")
     return got.get("reference", "")[:80], got.get("title", "")[:300], got.get("date", "")[:60], got.get("decision", "")[:120]
 
 
@@ -314,7 +318,12 @@ def main():
                 fj = r.get("fields_json", "")
                 if not fj or not fj.strip("{} "):
                     fj = card_fields(r.get("item_text", ""))   # card-style logs: same fields, in running text
+                    card = True
+                else:
+                    card = False
                 fr, ft, fd, fdec = pick_fields(fj)
+                if card and not decision_std(fdec):
+                    fdec = ""   # card text cut at "Decision" ("Decision makers under ...", a flattened table's "Decision on access" header)
                 reference, title, release, decision = fr or reference, ft or title, fd or release, fdec or decision
             else:                 # phase 1 layout
                 log = OLD_SOURCES.get(r["source"], r["source"]); key = r["reference"] or r["title"]

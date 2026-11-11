@@ -62,8 +62,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    ~60M Haiku tokens, transcription ~17,000 pages ~340M Sonnet tokens. The 10% is DSS-only (unverified for
    other agencies): pilot triage on one agency's 1,000 pages first. Batch API halves the cost but is API
    billing, not session quota.
-4. OPEN **Small data fixes**: `decision` holds non-decisions in 340 requests (288 DVA "Download as PDF" link
-   text; ~30 NOPSEMA "on access ..." and other card text cut at the word "Decision"): fix the field picking;
+4. OPEN **Small data fixes**:
    `review_samples.py` never samples 21 `tNN_title` vision tables; WGEA registry URL points at its IPS page
    (62 "documents" are mostly annual reports): point it at the disclosure-log section; open from squad run 12:
    field labels as titles (141), 601 requests with no document row, 18/19-045 p35 column shift.
