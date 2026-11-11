@@ -29,12 +29,12 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 
 ## Queue (ranked)
 
-1. OPEN **Naming pass follow-ups.** Decided 11 November: text-layer measures publish as machine labels, no
-   Sonnet re-name (`docs/DECISIONS.md`). Pass done 11 November (8,698 of 8,698 tables, ~48M Haiku tokens, 59 min,
-   run `wf_eb4e574c-7d3`; names in `data/naming/names.csv`, loaded by `apply_names` in `build_facts.py`;
-   counts and the 20-table Sonnet check in `docs/data-model.md`). Periods loaded (31,272 facts). Left: 510 value columns with no measure; tables judged not
-   statistics were dropped on Haiku's word (4 of 4 right in the check; 2,137 tables, 96,509 facts): sample 20
-   more before publishing. Done when: a second check of 20 `labelled` named facts passes.
+1. OPEN **Naming pass: one restore.** Pass done and loaded 11 November (`docs/data-model.md`); measures publish
+   as machine labels (`docs/DECISIONS.md`). The 510 columns with no measure stay `context needed` by design.
+   Dropped "not statistics" tables checked twice (24 by Sonnet: 21 right, 2 borderline, 1 wrong;
+   `data/reviews/naming_check/notstats_1114.json`), so ~5% of the 2,137 may hold real numbers: keep the drop.
+   Left: restore naming item 8051 (ESS outcome fees, new against old) via an override list in `apply_names`,
+   and re-extract item 4752's page (contract values in the page text, grid misread). Done when: both done.
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
