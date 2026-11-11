@@ -361,6 +361,9 @@ def pdfplumber_facts():
 
 NAMES = f"{ROOT}/data/naming/names.csv"
 NO_UNIT = {"", "unknown", "none", "n/a", "code"}
+# tables the naming pass called "not statistics" that a check found are statistics: keep their facts
+# (Sonnet check of 20 drops, 11 November 2026: eeaf8870a81f holds ESS outcome fees, new against old)
+KEEP_TABLES = {"eeaf8870a81f"}
 
 
 def named_period(s):
@@ -397,7 +400,7 @@ def apply_names(facts):
         if r is None:
             out.append(f)
             continue
-        if r["is_statistics"] == "False":
+        if r["is_statistics"] == "False" and f["table_id"] not in KEEP_TABLES:
             n["dropped, not statistics"] += 1
             continue
         if r["source"] in ("printed", "inferred") and r["measure"]:

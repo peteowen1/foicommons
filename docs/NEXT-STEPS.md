@@ -8,7 +8,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
 - **Phase 1 archive: done.** All-agency run finished 8 October 20:43 (170/170 logs; NDIS 403 recorded).
   Survey: 19,310 files, 14,312 unique documents (count from `documents`, never raw folders; `docs/data-model.md`).
 - **Phase 2 extraction.** pdfplumber over 1,407 unique table-bearing PDFs; vision over phase 1 and DSS
-  wayback scans. `facts`: 1,071,407 from 15,741 tables (11 November, after the Haiku naming pass).
+  wayback scans. `facts`: 1,071,409 from 15,741 tables (11 November, after the Haiku naming pass).
   Rebuild: `python -P scripts/build_catalogue.py` then `python -P scripts/build_facts.py` (~2 min).
 - **Backup**: private release `extract-backup`, latest `foicommons_extract_2026-11-11.tar.gz` (40 MB,
   136,640 files, round-trip sha256 checked). Refresh after each extraction run:
@@ -33,8 +33,8 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    as machine labels (`docs/DECISIONS.md`). The 510 columns with no measure stay `context needed` by design.
    Dropped "not statistics" tables checked twice (24 by Sonnet: 21 right, 2 borderline, 1 wrong;
    `data/reviews/naming_check/notstats_1114.json`), so ~5% of the 2,137 may hold real numbers: keep the drop.
-   Left: restore naming item 8051 (ESS outcome fees, new against old) via an override list in `apply_names`,
-   and re-extract item 4752's page (contract values in the page text, grid misread). Done when: both done.
+   Item 8051 restored (`KEEP_TABLES` in `build_facts.py`). Left: re-extract naming item 4752's page (contract
+   values in the page text, grid misread; `data/naming/tables.json` has its PDF and page). Done when: done.
 2. OPEN **Check-squad seed 15 leads** (`data/reviews/haiku_*_15.md`; Haiku's reading, not verified unless
    marked). Fixed 11 November: identifier columns counted as facts (items 12, 16; 1,785 facts). Left: item 10
    units are the table-level note ("recipients"; "Ave" columns are averages); periods null where the page header gives a date ("As at 26/12/2025",
