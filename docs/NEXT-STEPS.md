@@ -63,7 +63,7 @@ sessions: `docs/backlog/journal-2026-10.md`. Decisions and things deliberately n
    other agencies): pilot triage on one agency's 1,000 pages first. Batch API halves the cost but is API
    billing, not session quota.
 4. OPEN **Small data fixes**:
-   `review_samples.py` never samples 21 `tNN_title` vision tables; WGEA registry URL points at its IPS page
+   WGEA registry URL points at its IPS page
    (62 "documents" are mostly annual reports): point it at the disclosure-log section; open from squad run 12:
    field labels as titles (141), 601 requests with no document row, 18/19-045 p35 column shift.
 5. OPEN **DSS wayback leftovers** (detail in the journal): blind re-read for flags, rounding tol on wave-1

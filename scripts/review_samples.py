@@ -23,13 +23,16 @@ for f in glob.glob(f"{ROOT}/data/extract/vision/*/batches/*.json") + glob.glob(f
             strips["data/extract/vision/" + e["out_prefix"].split("/vision/")[1]] = e["strips"]
 
 rows = c.execute("""SELECT t.csv_path, f.csv_line, f."column", f.value_raw, f.measure, f.period, f.category, f.category_type,
-       f.geography, f.other_dims, t.title, t.units
-FROM facts f JOIN tables t USING (table_id)
+       f.geography, f.other_dims, t.title, t.units, d.example_path, t.pages
+FROM facts f JOIN tables t USING (table_id) JOIN documents d USING (doc_id)
 WHERE f.layout = 'checked' AND f.period_from IS DISTINCT FROM 'clean table' AND f.value <> ''""").fetchall()
 prefix = lambda p: p.rsplit(".csv", 1)[0].rsplit("_t", 1)[0]
-vis = [r for r in rows if prefix(r[0]) in strips]
-a = random.sample(vis, min(20, len(vis)))   # 20: one Haiku agent opening page images ran out of budget at 15 of 40
-json.dump([{"id": i + 1, "images": strips[prefix(r[0])], "table_csv": r[0], "csv_line": r[1], "column": r[2],
+# every checked fact is in the pool: the 21 hand-transcribed tables (t01_<name>.csv) have no strips, so their
+# item names the PDF page instead (squad seed 15: they were never sampled)
+a = random.sample(rows, min(20, len(rows)))   # 20: one Haiku agent opening page images ran out of budget at 15 of 40
+json.dump([{"id": i + 1, "images": strips.get(prefix(r[0]), []),
+            **({} if prefix(r[0]) in strips else {"pdf": f"{ROOT}/{r[12]}", "page": int(str(r[13]).split(";")[0])}),
+            "table_csv": r[0], "csv_line": r[1], "column": r[2],
             "value_as_recorded": r[3], "measure": r[4], "period": r[5], "category": r[6], "category_type": r[7],
             "geography": r[8], "other_dims": r[9], "table_title": r[10], "units": r[11]} for i, r in enumerate(a)],
           open(f"{ROOT}/data/reviews/sample_checked_facts_{seed}.json", "w"), indent=1)
@@ -43,5 +46,5 @@ json.dump([{"id": i + 1, "pdf": f"{ROOT}/{r[6]}", "page": int(str(r[7]).split(";
             "column": r[2], "value_as_recorded": r[3], "measure": r[4], "row_label": r[5], "layout": r[8],
             "named_by": r[9] or "column name"} for i, r in enumerate(b)],
           open(f"{ROOT}/data/reviews/sample_labelled_facts_{seed}.json", "w"), indent=1)
-print(f"seed {seed}: {len(a)} checked facts (of {len(vis)} with page images), {len(b)} text-layer facts "
+print(f"seed {seed}: {len(a)} checked facts (of {len(rows)}; {sum(prefix(r[0]) not in strips for r in rows)} from PDF pages), {len(b)} text-layer facts "
       f"(labelled of {len(pools['labelled'])}, inferred of {len(pools['inferred'])})")

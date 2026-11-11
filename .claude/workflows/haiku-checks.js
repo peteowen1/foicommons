@@ -50,7 +50,7 @@ Check ONLY the items with id ${lo} to ${hi}; other agents check the rest.`
 const BASE = [
   { key: 'checked_facts', prompt:
 `${ID}\n${RO} 
-Input: ${R}/sample_checked_facts_${seed}.json, 20 facts transcribed from scanned government FOI tables. Each item has \`images\` (strips of the scanned page, top to bottom, or one whole page), \`table_csv\`, \`csv_line\` (line in that CSV, header = line 1), \`column\`, \`value_as_recorded\`, the breakdowns (\`measure\`, \`period\`, \`category\`, \`category_type\`, \`geography\`, \`other_dims\`), \`table_title\` and \`units\`.
+Input: ${R}/sample_checked_facts_${seed}.json, 20 facts transcribed from scanned government FOI tables. Each item has \`images\` (strips of the scanned page, top to bottom, or one whole page; when empty, open `pdf` at `page` with the Read tool instead), \`table_csv\`, \`csv_line\` (line in that CSV, header = line 1), \`column\`, \`value_as_recorded\`, the breakdowns (\`measure\`, \`period\`, \`category\`, \`category_type\`, \`geography\`, \`other_dims\`), \`table_title\` and \`units\`.
 
 For each item answer: value_ok (does the page print exactly value_as_recorded in that cell?); period_ok (Australian financial years run 1 July to 30 June: "year ended 30 June 2010" is 2009-10; a dd/mm/yyyy "as at" date is a date period; blank is fine only if the page gives no period); labels_ok (do category / geography / other_dims describe the cell's row and column?); measure_ok (yes / vague / wrong).
 
